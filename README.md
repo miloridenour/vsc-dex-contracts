@@ -161,6 +161,31 @@ cd contracts/btc-mapping
 tinygo build -o ../../bin/btc-mapping.wasm -target wasm main.go
 ```
 
+#### V2 AMM Contract (`contracts/v2-amm/`)
+HBD-anchored Automated Market Maker contract (integrated from `go-contract-template`):
+- **Constant product formula** (x*y=k) for swap calculations
+- **HBD-anchored pools**: Every pool is anchored to HBD (asset0)
+- **Base fees**: Applied only when input side is HBD (default 8 bps = 0.08%)
+- **Slip-adjusted fees**: Optional portion of slippage above baseline kept for LPs
+- **Liquidity provision**: Add/remove liquidity with LP token minting/burning
+- **Referral support**: Optional referral fees (0.01%-10.00%) for swaps
+- **Fee claiming**: System-only function to claim accumulated HBD fees
+
+**Key Methods:**
+- `init asset0,asset1,baseFeeBps` - Initialize pool
+- `add_liquidity amt0,amt1` - Add liquidity and mint LP tokens
+- `remove_liquidity lpAmount` - Remove liquidity and burn LP tokens
+- `swap dir,amountIn[,minOut]` - Execute swap (dir: `0to1` or `1to0`)
+- `claim_fees` - Claim accumulated fees (system-only)
+
+**Building:**
+```bash
+cd contracts/v2-amm
+tinygo build -o ../../bin/v2-amm.wasm -target wasm main.go
+```
+
+**Note**: This is the actual DEX contract that the router service calls to execute swaps. The router computes routes and calls this contract's `swap` method.
+
 #### Token Registry (`contracts/token-registry/`)
 Registry contract for wrapped/mapped assets:
 - Registers asset metadata (symbol, decimals, owner)
@@ -282,6 +307,7 @@ Deployment and administration utilities:
 vsc-dex-mapping/
 ├── contracts/          # Smart contracts (TinyGo)
 │   ├── btc-mapping/   # Bitcoin UTXO mapping contract
+│   ├── v2-amm/        # HBD-anchored AMM contract (from go-contract-template)
 │   └── token-registry/ # Token metadata registry
 ├── services/           # Microservices (Go)
 │   ├── oracle/        # Bitcoin oracle service
@@ -311,6 +337,17 @@ vsc-dex-mapping/
 - ✅ Transfer functionality for mapped tokens
 - ✅ Public key registration and key pair creation
 - ✅ Advanced features: Block seeding, header addition, oracle-controlled operations
+
+#### **V2 AMM Contract** (`contracts/v2-amm/`)
+- ✅ Constant product AMM (x*y=k) implementation
+- ✅ HBD-anchored pool design
+- ✅ Base fee system (HBD input only)
+- ✅ Slip-adjusted fee mechanism
+- ✅ Liquidity provision/removal with LP tokens
+- ✅ Referral fee support
+- ✅ Fee claiming functionality
+- ✅ System safety functions
+- ✅ Integrated from `go-contract-template` examples
 
 #### **Oracle Service** (`services/oracle/`)
 - ✅ Bitcoin RPC client integration
@@ -369,9 +406,12 @@ vsc-dex-mapping/
 - ⏳ Multi-chain pool management
 
 #### **DEX Contract Implementation**
-- ⏳ Actual DEX smart contract (swap logic)
-- ⏳ Liquidity pool management
-- ⏳ Fee collection and distribution
+- ✅ **V2 AMM Contract** - Integrated from `go-contract-template` examples
+  - Constant product AMM (x*y=k) with swap logic
+  - Liquidity pool management (add/remove liquidity)
+  - Fee collection and distribution (base fees + slip-adjusted fees)
+  - Referral support
+  - LP token management
 
 #### **Advanced Features**
 - ⏳ Real indexer HTTP API (currently stubbed)

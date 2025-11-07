@@ -1,0 +1,16 @@
+=== RUN   TestV2_Init_Add_Remove_Swap_Fees
+--- PASS: TestV2_Init_Add_Remove_Swap_Fees (0.00s)
+=== RUN   TestV2_Donate_Transfer_Burn_ClaimFees_System
+--- PASS: TestV2_Donate_Transfer_Burn_ClaimFees_System (0.00s)
+=== RUN   TestV2_SlipFee_And_NonHBDFeeRules
+--- PASS: TestV2_SlipFee_And_NonHBDFeeRules (0.00s)
+=== RUN   TestV2_Referral_Bounds_And_MinOut
+--- PASS: TestV2_Referral_Bounds_And_MinOut (0.00s)
+=== RUN   TestV2_BaseFeeZero_Referral_Paths
+--- PASS: TestV2_BaseFeeZero_Referral_Paths (0.00s)
+=== RUN   TestV2_InvalidDir_And_NonSystem_Claim
+--- PASS: TestV2_InvalidDir_And_NonSystem_Claim (0.00s)
+=== RUN   TestV2_Swap_Referral_Beneficiary
+--- PASS: TestV2_Swap_Referral_Beneficiary (0.00s)
+PASS
+ok  	contract-template/examples/v2-amm	0.002s
