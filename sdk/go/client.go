@@ -186,6 +186,20 @@ func (c *Client) ExecuteDexSwap(ctx context.Context, route *RouteResult) error {
 	return c.broadcastTx(ctx, payload)
 }
 
+// ExecuteDexSwapRouter implements the router.DEXExecutor interface
+// This allows the SDK client to be injected into the router service
+func (c *Client) ExecuteDexSwapRouter(ctx context.Context, amountOut int64, route []string, fee int64) error {
+	// Create SDK RouteResult from parameters
+	sdkRoute := &RouteResult{
+		AmountOut:  amountOut,
+		Route:      route,
+		PriceImpact: 0, // TODO: Calculate price impact
+		Fee:        fee,
+	}
+
+	return c.ExecuteDexSwap(ctx, sdkRoute)
+}
+
 // broadcastTx broadcasts a transaction to VSC
 func (c *Client) broadcastTx(ctx context.Context, payload string) error {
 	// Parse the payload to extract contract call parameters
@@ -198,13 +212,19 @@ func (c *Client) broadcastTx(ctx context.Context, payload string) error {
 	method, _ := contractCall["method"].(string)
 	args, _ := contractCall["args"].(map[string]interface{})
 
+	// Serialize args to JSON string (VscContractCall.Payload is string, not map)
+	argsJSON, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("failed to marshal contract call args: %w", err)
+	}
+
 	// Create VSC contract call transaction
 	vscCall := &transactionpool.VscContractCall{
 		Caller:     c.config.Username, // Use configured username as caller
 		ContractId: contractID,
 		RcLimit:    1000, // Default RC limit
 		Action:     method,
-		Payload:    args,
+		Payload:    string(argsJSON), // Payload must be JSON string
 		NetId:      "vsc-mainnet",
 	}
 

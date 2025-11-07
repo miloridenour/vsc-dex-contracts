@@ -2,12 +2,23 @@ package router
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
-	// vscdex "github.com/vsc-eco/vsc-dex-mapping/sdk/go" // TODO: Fix import path
 )
+
+// DEXExecutor interface for executing DEX swaps
+type DEXExecutor interface {
+	ExecuteDexSwap(ctx context.Context, amountOut int64, route []string, fee int64) error
+}
+
+// RouteResult represents the result of a route computation for DEX execution
+type RouteResult struct {
+	AmountOut   int64    `json:"amount_out"`
+	Route       []string `json:"route"`
+	PriceImpact float64  `json:"price_impact"`
+	Fee         int64    `json:"fee"`
+}
 
 // PoolQuerier interface for querying pool information
 type PoolQuerier interface {
@@ -20,7 +31,7 @@ type Service struct {
 	vscConfig   VSCConfig
 	adapters    *ChainAdapters
 	poolQuerier PoolQuerier
-	// sdkClient   *vscdex.Client // TODO: Add when import is fixed
+	dexExecutor DEXExecutor
 }
 
 type VSCConfig struct {
@@ -570,7 +581,7 @@ func (r *Service) calculateMinOutput(expectedOut int64, maxSlippageBps uint64, r
 }
 
 // NewService creates a new router service
-func NewService(config VSCConfig) *Service {
+func NewService(config VSCConfig, dexExecutor DEXExecutor) *Service {
 	adapters := NewChainAdapters()
 
 	// Register built-in adapters
@@ -578,14 +589,11 @@ func NewService(config VSCConfig) *Service {
 	// ethAdapter := adapters.NewEthereumAdapter("0x...", "https://...")
 	// adapters.RegisterAdapter(ethAdapter)
 
-	// TODO: Initialize SDK client when import is fixed
-	// sdkClient := vscdex.NewClient(vscdex.Config{...})
-
 	return &Service{
 		vscConfig:   config,
 		adapters:    adapters,
 		poolQuerier: nil, // Can be set via SetPoolQuerier
-		// sdkClient:   sdkClient,
+		dexExecutor: dexExecutor,
 	}
 }
 
@@ -620,31 +628,17 @@ func (s *Service) ComputeRoute(ctx context.Context, params SwapParams) (*SwapRes
 func (s *Service) ExecuteTransaction(ctx context.Context, result *SwapResult) error {
 	log.Printf("Executing swap: %+v", result)
 
-	// Create DEX contract call payload with proper structure
-	routeJSON, err := json.Marshal(result.Route)
-	if err != nil {
-		return fmt.Errorf("failed to marshal route: %w", err)
+	// Execute the swap using the DEX executor
+	if s.dexExecutor == nil {
+		return fmt.Errorf("DEX executor not initialized")
 	}
 
-	payload := fmt.Sprintf(`{
-		"contract": "dex-router-contract",
-		"method": "executeSwap",
-		"args": {
-			"amountOut": %d,
-			"route": %s,
-			"fee0": %d,
-			"fee1": %d
-		}
-	}`, result.AmountOut, string(routeJSON), result.Fee0, result.Fee1)
-
-	// TODO: Execute the swap using the SDK client when import is fixed
-	// For now, simulate successful execution with proper payload logging
-
-	log.Printf("DEX contract call payload: %s", payload)
-	log.Printf("DEX swap would be executed - Amount Out: %d, Route: %v", result.AmountOut, result.Route)
-
-	// In production, this would call:
-	// return s.sdkClient.ExecuteDexSwap(ctx, routeResult)
+	// Execute the DEX swap via the executor
+	err := s.dexExecutor.ExecuteDexSwap(ctx, result.AmountOut, result.Route, result.Fee0+result.Fee1)
+	if err != nil {
+		log.Printf("Failed to execute DEX swap: %v", err)
+		return fmt.Errorf("failed to execute swap: %w", err)
+	}
 
 	log.Printf("DEX swap executed successfully - Amount Out: %d", result.AmountOut)
 	return nil

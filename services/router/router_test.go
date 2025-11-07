@@ -9,6 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mockDEXExecutor implements DEXExecutor for testing
+type mockDEXExecutor struct{}
+
+func (m *mockDEXExecutor) ExecuteDexSwap(ctx context.Context, amountOut int64, route []string, fee int64) error {
+	// Mock implementation - just return success
+	return nil
+}
+
 func TestNewService(t *testing.T) {
 	config := VSCConfig{
 		Endpoint: "http://localhost:4000",
@@ -16,15 +24,18 @@ func TestNewService(t *testing.T) {
 		Username: "test-user",
 	}
 
-	svc := NewService(config)
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(config, mockExecutor)
 
 	assert.NotNil(t, svc)
 	assert.NotNil(t, svc.adapters)
 	assert.Equal(t, config, svc.vscConfig)
+	assert.Equal(t, mockExecutor, svc.dexExecutor)
 }
 
 func TestComputeDirectRoute(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Test BTC -> HBD direct route (using placeholder pool logic)
 	params := SwapParams{
@@ -45,7 +56,8 @@ func TestComputeDirectRoute(t *testing.T) {
 }
 
 func TestComputeHbdSavingsToHbdRoute(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "HBD_SAVINGS",
@@ -70,7 +82,8 @@ func TestComputeHbdSavingsToHbdRoute(t *testing.T) {
 }
 
 func TestComputeHiveToHbdRoute(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "HIVE",
@@ -93,7 +106,8 @@ func TestComputeHiveToHbdRoute(t *testing.T) {
 }
 
 func TestComputeBtcToHiveRoute(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// BTC -> HIVE should route through HBD: BTC -> HBD -> HIVE
 	params := SwapParams{
@@ -116,7 +130,8 @@ func TestComputeBtcToHiveRoute(t *testing.T) {
 }
 
 func TestUnsupportedRoute(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Test route that doesn't exist
 	params := SwapParams{
@@ -204,7 +219,8 @@ func TestSolanaAdapter(t *testing.T) {
 // Edge case tests
 
 func TestSwapSameAsset(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "BTC",
@@ -223,7 +239,8 @@ func TestSwapSameAsset(t *testing.T) {
 }
 
 func TestSwapZeroAmount(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "BTC",
@@ -242,7 +259,8 @@ func TestSwapZeroAmount(t *testing.T) {
 }
 
 func TestSwapNegativeAmount(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "BTC",
@@ -260,7 +278,8 @@ func TestSwapNegativeAmount(t *testing.T) {
 }
 
 func TestSwapSlippageExceeded(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Set an unrealistically high minimum output
 	params := SwapParams{
@@ -280,7 +299,8 @@ func TestSwapSlippageExceeded(t *testing.T) {
 }
 
 func TestSwapInvalidPool(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "UNKNOWN",
@@ -299,7 +319,8 @@ func TestSwapInvalidPool(t *testing.T) {
 }
 
 func TestBtcToHbdSwap(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "BTC",
@@ -321,7 +342,8 @@ func TestBtcToHbdSwap(t *testing.T) {
 }
 
 func TestHbdToBtcSwap(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "HBD",
@@ -343,7 +365,8 @@ func TestHbdToBtcSwap(t *testing.T) {
 }
 
 func TestHbdSavingsToHbdSwap(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "HBD_SAVINGS",
@@ -368,7 +391,8 @@ func TestHbdSavingsToHbdSwap(t *testing.T) {
 }
 
 func TestHiveToHbdSwap(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "HIVE",
@@ -391,7 +415,8 @@ func TestHiveToHbdSwap(t *testing.T) {
 }
 
 func TestBtcToHiveTwoHopSwap(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "BTC",
@@ -412,7 +437,8 @@ func TestBtcToHiveTwoHopSwap(t *testing.T) {
 }
 
 func TestHiveToBtcTwoHopSwap(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "HIVE",
@@ -432,7 +458,8 @@ func TestHiveToBtcTwoHopSwap(t *testing.T) {
 }
 
 func TestHbdSavingsToHiveTwoHopSwap(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	params := SwapParams{
 		AssetIn:      "HBD_SAVINGS",
@@ -452,7 +479,8 @@ func TestHbdSavingsToHiveTwoHopSwap(t *testing.T) {
 }
 
 func TestCalculateExpectedOutput(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Test with known pool reserves (1 BTC = 10 HBD from defaults)
 	amountIn := int64(100000) // 0.001 BTC
@@ -472,7 +500,8 @@ func TestCalculateExpectedOutput(t *testing.T) {
 }
 
 func TestCalculateMinOutput(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	expectedOut := int64(1000000)
 	maxSlippage := uint64(50) // 0.5%
@@ -486,7 +515,8 @@ func TestCalculateMinOutput(t *testing.T) {
 }
 
 func TestCalculateMinOutputWithRatio(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	expectedOut := int64(1000000)
 	maxSlippage := uint64(100) // 1%
@@ -503,7 +533,8 @@ func TestCalculateMinOutputWithRatio(t *testing.T) {
 // Edge case tests for overflow and pool protection
 
 func TestPoolDrainProtection(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Try to swap more than 50% of reserve
 	params := SwapParams{
@@ -524,7 +555,8 @@ func TestPoolDrainProtection(t *testing.T) {
 }
 
 func TestSwapAmountTooSmallAfterFees(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Try to swap amount that would be 0 after fees
 	params := SwapParams{
@@ -547,7 +579,8 @@ func TestSwapAmountTooSmallAfterFees(t *testing.T) {
 }
 
 func TestInvalidFee(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Create a mock pool querier with invalid fee
 	mockQuerier := &MockPoolQuerier{
@@ -581,7 +614,8 @@ func TestInvalidFee(t *testing.T) {
 }
 
 func TestLargeReserveCalculation(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Create a pool with very large reserves to test overflow protection
 	mockQuerier := &MockPoolQuerier{
@@ -616,7 +650,8 @@ func TestLargeReserveCalculation(t *testing.T) {
 }
 
 func TestTwoHopSwapFirstFails(t *testing.T) {
-	svc := NewService(VSCConfig{})
+	mockExecutor := &mockDEXExecutor{}
+	svc := NewService(VSCConfig{}, mockExecutor)
 
 	// Create a scenario where first swap would fail
 	// This tests error handling in two-hop swaps
