@@ -2,21 +2,24 @@ package indexer
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 )
 
 // DexReadModel implements read model for DEX operations
 type DexReadModel struct {
-	mu     sync.RWMutex
-	pools  map[string]PoolInfo
-	tokens map[string]TokenInfo
+	mu       sync.RWMutex
+	pools    map[string]PoolInfo
+	tokens   map[string]TokenInfo
+	deposits map[string]DepositInfo
 }
 
 // NewDexReadModel creates a new DEX read model
 func NewDexReadModel() *DexReadModel {
 	return &DexReadModel{
-		pools:  make(map[string]PoolInfo),
-		tokens: make(map[string]TokenInfo),
+		pools:    make(map[string]PoolInfo),
+		tokens:   make(map[string]TokenInfo),
+		deposits: make(map[string]DepositInfo),
 	}
 }
 
@@ -42,10 +45,10 @@ func (dm *DexReadModel) handlePoolEvent(event VSCEvent) error {
 	switch event.Method {
 	case "createPool":
 		var args struct {
-			PoolID    string  `json:"poolId"`
-			Asset0    string  `json:"asset0"`
-			Asset1    string  `json:"asset1"`
-			Fee       float64 `json:"fee"`
+			PoolID string  `json:"poolId"`
+			Asset0 string  `json:"asset0"`
+			Asset1 string  `json:"asset1"`
+			Fee    float64 `json:"fee"`
 		}
 		if err := json.Unmarshal(event.Args, &args); err != nil {
 			return err
@@ -62,9 +65,9 @@ func (dm *DexReadModel) handlePoolEvent(event VSCEvent) error {
 
 	case "addLiquidity":
 		var args struct {
-			PoolID   string `json:"poolId"`
-			Amount0  uint64 `json:"amount0"`
-			Amount1  uint64 `json:"amount1"`
+			PoolID  string `json:"poolId"`
+			Amount0 uint64 `json:"amount0"`
+			Amount1 uint64 `json:"amount1"`
 		}
 		if err := json.Unmarshal(event.Args, &args); err != nil {
 			return err
@@ -128,9 +131,47 @@ func (dm *DexReadModel) handleMappingEvent(event VSCEvent) error {
 	// These would update separate mapping-specific read models
 	switch event.Method {
 	case "depositMinted":
-		// Update deposit tracking
+		var args struct {
+			TxID      string `json:"txid"`
+			VOut      uint32 `json:"vout"`
+			Amount    uint64 `json:"amount"`
+			Owner     string `json:"owner"`
+			Height    uint32 `json:"height"`
+			Confirmed bool   `json:"confirmed"`
+		}
+		if err := json.Unmarshal(event.Args, &args); err != nil {
+			return err
+		}
+
+		key := depositKey(args.TxID, args.VOut)
+		dm.deposits[key] = DepositInfo{
+			TxID:      args.TxID,
+			VOut:      args.VOut,
+			Amount:    args.Amount,
+			Owner:     args.Owner,
+			Height:    args.Height,
+			Confirmed: args.Confirmed,
+		}
+	case "depositConfirmed":
+		var args struct {
+			TxID   string `json:"txid"`
+			VOut   uint32 `json:"vout"`
+			Height uint32 `json:"height"`
+		}
+		if err := json.Unmarshal(event.Args, &args); err != nil {
+			return err
+		}
+
+		key := depositKey(args.TxID, args.VOut)
+		if deposit, exists := dm.deposits[key]; exists {
+			deposit.Confirmed = true
+			if args.Height > 0 {
+				deposit.Height = args.Height
+			}
+			dm.deposits[key] = deposit
+		}
 	case "withdrawalRequested":
-		// Update withdrawal tracking
+		// Withdrawal requests do not change deposit tracking directly.
 	}
 
 	return nil
@@ -174,6 +215,19 @@ func (dm *DexReadModel) QueryDeposits() ([]DepositInfo, error) {
 	}
 
 	return deposits, nil
+}
+
+// GetDeposit returns a specific deposit by txid and vout
+func (dm *DexReadModel) GetDeposit(txid string, vout uint32) (DepositInfo, bool) {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+
+	deposit, exists := dm.deposits[depositKey(txid, vout)]
+	return deposit, exists
+}
+
+func depositKey(txid string, vout uint32) string {
+	return fmt.Sprintf("%s:%d", txid, vout)
 }
 
 // GetPool returns a specific pool by ID
