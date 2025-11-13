@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	_ "github.com/vsc-eco/go-vsc-node/modules/wasm/sdk" // ensure sdk is imported
-	"github.com/vsc-eco/vsc-dex-mapping/contracts/btc-mapping/blocklist"
-	"github.com/vsc-eco/vsc-dex-mapping/contracts/btc-mapping/mapping"
+	"contract-template/contract/blocklist"
+	"contract-template/contract/mapping"
 
 	"github.com/vsc-eco/go-vsc-node/modules/wasm/sdk"
 

@@ -47,3 +47,5 @@ e2e:
 fmt:
 	go fmt ./...
 	cd sdk/ts && npm run fmt
+
+

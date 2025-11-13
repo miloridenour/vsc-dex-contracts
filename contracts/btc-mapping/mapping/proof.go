@@ -2,7 +2,7 @@ package mapping
 
 import (
 	"bytes"
-	"github.com/vsc-eco/vsc-dex-mapping/contracts/btc-mapping/blocklist"
+	"contract-template/contract/blocklist"
 	"encoding/hex"
 	"fmt"
 

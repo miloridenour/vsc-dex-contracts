@@ -17,3 +17,5 @@ export interface TokenInfo {
   contract_id: string;
   description: string;
 }
+
+

@@ -104,3 +104,5 @@ Services can be configured via command-line flags or environment variables:
 - Confirm VSC GraphQL WebSocket endpoint is accessible
 - Check service logs for connection errors
 - Verify contract IDs are correctly configured
+
+

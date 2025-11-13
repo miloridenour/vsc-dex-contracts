@@ -9,6 +9,8 @@ Bitcoin UTXO mapping contract that:
 - Processes deposit proofs to mint mapped BTC tokens
 - Handles withdrawal requests to burn tokens and authorize BTC spends
 
+**Note**: This contract uses `utxo-mapping` as a dependency via the `contract-template` import path (mapped via `replace` directive in `go.mod`). The contract imports from `contract-template/contract/blocklist` and `contract-template/contract/mapping`, which resolve to the utxo-mapping code.
+
 ### Building
 ```bash
 cd btc-mapping

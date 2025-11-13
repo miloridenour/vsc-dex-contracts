@@ -10,15 +10,19 @@ import (
 	"syscall"
 	"time"
 
+	vscdex "github.com/vsc-eco/vsc-dex-mapping/sdk/go"
 	"github.com/vsc-eco/vsc-dex-mapping/services/router"
 )
 
 func main() {
 	var (
-		vscNode     = flag.String("vsc-node", "http://localhost:4000", "VSC node GraphQL endpoint")
-		vscKey      = flag.String("vsc-key", "", "VSC active key for transactions")
-		vscUsername = flag.String("vsc-username", "", "VSC username")
-		port        = flag.String("port", "8080", "HTTP server port")
+		vscNode        = flag.String("vsc-node", "http://localhost:4000", "VSC node GraphQL endpoint")
+		vscKey         = flag.String("vsc-key", "", "VSC active key for transactions")
+		vscUsername    = flag.String("vsc-username", "", "VSC username")
+		port           = flag.String("port", "8080", "HTTP server port")
+		btcMapping     = flag.String("btc-mapping-contract", "", "BTC mapping contract ID")
+		tokenRegistry  = flag.String("token-registry-contract", "", "Token registry contract ID")
+		dexRouter      = flag.String("dex-router-contract", "", "DEX router contract ID")
 	)
 	flag.Parse()
 
@@ -28,7 +32,19 @@ func main() {
 		Username: *vscUsername,
 	}
 
-	svc := router.NewService(config)
+	// Create SDK client to use as DEXExecutor
+	sdkClient := vscdex.NewClient(vscdex.Config{
+		Endpoint: *vscNode,
+		Username: *vscUsername,
+		ActiveKey: *vscKey,
+		Contracts: vscdex.ContractAddresses{
+			BtcMapping:    *btcMapping,
+			TokenRegistry: *tokenRegistry,
+			DexRouter:     *dexRouter,
+		},
+	})
+
+	svc := router.NewService(config, sdkClient)
 	server := router.NewServer(svc, *port)
 
 	// Handle graceful shutdown

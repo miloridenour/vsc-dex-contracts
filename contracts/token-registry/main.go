@@ -119,3 +119,5 @@ func getAllTokens() unsafe.Pointer {
 func main() {
 	// Contract entry point
 }
+
+

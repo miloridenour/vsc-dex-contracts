@@ -1,10 +1,14 @@
 module github.com/vsc-eco/vsc-dex-mapping/contracts/btc-mapping
 
-go 1.24
+go 1.24.0
 
 replace vsc-node => ../../../go-vsc-node/
+replace contract-template => ../../../utxo-mapping/btc-mapping-contract
 
-require vsc-node v0.0.0
+require (
+	contract-template v0.0.0
+	vsc-node v0.0.0
+)
 
 require (
 	github.com/btcsuite/btcd v0.24.2

@@ -142,8 +142,18 @@ Read model indexer that:
 **Running:**
 ```bash
 cd services/indexer
-go run cmd/main.go --vsc-graphql ws://localhost:4000/graphql
+go run cmd/main.go --http-endpoint http://localhost:4000 --http-port 8081 --contracts "contract-id-1,contract-id-2"
 ```
+
+**Indexing Strategy**:
+- **Default**: HTTP polling to query VSC GraphQL for new contract outputs
+  - Polls every 5 seconds by default
+  - Monitors specified contract IDs via `--contracts` flag (comma-separated)
+  - Queries `findContractOutput` to get new contract execution results
+  - Tracks block height to only process new events
+- **Optional WebSocket**: If `--ws-endpoint` is provided, attempts WebSocket subscriptions first
+  - Automatically falls back to polling if WebSocket connection fails
+  - Future-ready for when VSC supports GraphQL subscriptions
 
 ### Smart Contracts
 
@@ -273,7 +283,7 @@ Deployment and administration utilities:
    go run services/router/cmd/main.go --vsc-node http://localhost:4000 --port 8080
 
    # Terminal 3: Indexer
-   go run services/indexer/cmd/main.go --vsc-graphql ws://localhost:4000/graphql
+   go run services/indexer/cmd/main.go --http-endpoint http://localhost:4000 --http-port 8081 --contracts "btc-mapping-contract-id,dex-router-contract-id"
    ```
 
 5. **Check system status**:
@@ -496,8 +506,10 @@ cd contracts/btc-mapping && tinygo build -target wasm
 
 Services can be configured via command-line flags or environment variables:
 
-- `VSC_ENDPOINT`: VSC GraphQL endpoint (default: `http://localhost:4000`)
-- `VSC_GRAPHQL_WS`: VSC GraphQL WebSocket endpoint
+- `VSC_ENDPOINT`: VSC GraphQL HTTP endpoint (default: `http://localhost:4000`)
+- `HTTP_ENDPOINT`: VSC GraphQL HTTP endpoint for indexer (default: `http://localhost:4000`)
+- `POLL_INTERVAL`: Indexer polling interval (default: `5s`)
+- `CONTRACTS`: Comma-separated list of contract IDs to monitor
 - `BTC_RPC_HOST`: Bitcoin RPC host:port (default: `localhost:8332`)
 - `BTC_RPC_USER`: Bitcoin RPC username
 - `BTC_RPC_PASS`: Bitcoin RPC password

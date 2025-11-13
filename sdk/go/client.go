@@ -35,10 +35,9 @@ type ContractAddresses struct {
 
 // NewClient creates a new VSC DEX client
 func NewClient(config Config) *Client {
-	vscClient := hivego.NewHiveRpc(config.Endpoint)
 	return &Client{
-		vscClient: vscClient,
-		config:    config,
+		config:             config,
+		transactionCreator: nil, // TODO: Initialize TransactionCrafter if needed
 	}
 }
 
