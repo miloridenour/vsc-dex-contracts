@@ -33,7 +33,7 @@ type ReturnAddress struct {
 // Contract initialization
 // Payload: version string (e.g. "1.0.0")
 //
-go:wasmexport init
+//go:wasmexport init
 func Init(payload *string) *string {
 	if payload == nil || *payload == "" {
 		setStr(keyVersion, "1.0.0")
@@ -48,7 +48,8 @@ func Init(payload *string) *string {
 // Payload: JSON with pool parameters
 // {"asset0": "HBD", "asset1": "HIVE", "fee_bps": 8}
 //
-go:wasmexport create_pool
+
+//go:wasmexport create_pool
 func CreatePool(payload *string) *string {
 	if payload == nil {
 		return &[]string{"error", "payload required"}[1]
@@ -95,7 +96,7 @@ func CreatePool(payload *string) *string {
 // Execute DEX operation based on JSON schema
 // Payload: JSON instruction as defined in schema
 //
-go:wasmexport execute
+//go:wasmexport execute
 func Execute(payload *string) *string {
 	if payload == nil {
 		return &[]string{"error", "payload required"}[1]
@@ -260,133 +261,6 @@ func executeDirectSwap(poolId string, instruction DexInstruction) *string {
 			currentFee := getUint(feeReserveKey)
 			setUint(feeReserveKey, currentFee + fee)
 		}
-	}
-
-	return nil
-}
-	asset0 := getPoolAsset0(poolId)
-	asset1 := getPoolAsset1(poolId)
-
-	if asset0 == "" {
-		return &[]string{"error", "pool not found"}[1]
-	}
-
-	r0 := getPoolReserve0(poolId)
-	r1 := getPoolReserve1(poolId)
-	feeBps := getPoolFee(poolId)
-
-	if r0 == 0 || r1 == 0 {
-		return &[]string{"error", "pool has zero reserves"}[1]
-	}
-
-	// Determine swap direction
-	var amountInU uint64
-	var err error
-	if instruction.MinAmountOut != nil {
-		amountInU = uint64(*instruction.MinAmountOut)
-	} else {
-		// This would need to be calculated based on desired output
-		// For now, require explicit amount specification
-		return &[]string{"error", "min_amount_out required for swap"}[1]
-	}
-
-	// Apply slippage protection if specified
-	minOut := uint64(0)
-	if instruction.SlippageBps != nil {
-		// Calculate minimum output based on slippage
-		expectedOut := calculateSwapOutput(amountInU, r0, r1, feeBps, asset0 == instruction.AssetIn)
-		slippageMultiplier := 1.0 - float64(*instruction.SlippageBps)/10000.0
-		minOut = uint64(float64(expectedOut) * slippageMultiplier)
-	}
-
-	var dyUser uint64
-	var dxEff uint64
-
-	if asset0 == instruction.AssetIn {
-		// Input is asset0, output is asset1
-		dxEff = amountInU
-		if isHbd(asset0) && feeBps > 0 {
-			dxEff = amountInU * (10000 - feeBps) / 10000
-		}
-		if dxEff <= 0 {
-			dxEff = 1
-		}
-
-		k := r0 * r1
-		newX := r0 + dxEff
-		dy := r1 - (k / newX)
-		dyUser = dy
-
-		// Apply slippage-adjusted fees
-		dyUser = applySlippageFee(dyUser, amountInU, dxEff, r0, r1, true)
-
-		if minOut > 0 && dyUser < minOut {
-			return &[]string{"error", "slippage tolerance exceeded"}[1]
-		}
-
-		// Update reserves
-		setPoolReserve0(poolId, r0 + dxEff)
-		setPoolReserve1(poolId, r1 - dyUser)
-
-		// Draw input asset
-		drawAsset(int64(amountInU), asset0)
-
-		// Transfer output asset to recipient
-		transferAsset(instruction.Recipient, int64(dyUser), asset1)
-
-		// Handle referral fees if HBD input
-		if isHbd(asset0) && instruction.Beneficiary != nil && instruction.RefBps != nil {
-			fee := uint64(amountInU - int64(dxEff))
-			if fee > 0 {
-				refOut := fee * uint64(*instruction.RefBps) / 10000
-				if refOut > 0 {
-					transferAsset(*instruction.Beneficiary, int64(refOut), asset0)
-					fee -= refOut
-				}
-				if fee > 0 {
-					setUint(poolFee0Key(poolId), getUint(poolFee0Key(poolId)) + fee)
-				}
-			}
-		}
-
-	} else if asset1 == instruction.AssetIn {
-		// Input is asset1, output is asset0
-		dxEff = amountInU
-
-		k := r0 * r1
-		newY := r1 + dxEff
-		dxOut := r0 - (k / newY)
-		dxUser := dxOut
-
-		// Apply slippage-adjusted fees
-		dxUser = applySlippageFee(dxUser, amountInU, dxEff, r0, r1, false)
-
-		if minOut > 0 && dxUser < minOut {
-			return &[]string{"error", "slippage tolerance exceeded"}[1]
-		}
-
-		// Update reserves
-		setPoolReserve1(poolId, r1 + dxEff)
-		setPoolReserve0(poolId, r0 - dxUser)
-
-		// Draw input asset
-		drawAsset(int64(amountInU), asset1)
-
-		// Transfer output asset to recipient (handle referral if specified)
-		if instruction.Beneficiary != nil && instruction.RefBps != nil {
-			refOut := dxUser * uint64(*instruction.RefBps) / 10000
-			if refOut >= dxUser {
-				refOut = dxUser - 1
-			}
-			dxUser -= refOut
-			if refOut > 0 {
-				transferAsset(*instruction.Beneficiary, int64(refOut), asset0)
-			}
-		}
-
-		transferAsset(instruction.Recipient, int64(dxUser), asset0)
-	} else {
-		return &[]string{"error", "invalid asset pair for pool"}[1]
 	}
 
 	return nil
@@ -687,7 +561,7 @@ func applySlippageFee(amountOut, amountIn, amountInAfterFee, reserveIn, reserveO
 // Query pool information
 // Payload: pool_id
 //
-go:wasmexport get_pool
+//go:wasmexport get_pool
 func GetPool(payload *string) *string {
 	if payload == nil {
 		return &[]string{"error", "pool_id required"}[1]
@@ -720,7 +594,7 @@ func GetPool(payload *string) *string {
 // Claim fees (system only)
 // Payload: pool_id
 //
-go:wasmexport claim_fees
+//go:wasmexport claim_fees
 func ClaimFees(payload *string) *string {
 	if !isSystemSender() {
 		return &[]string{"error", "system only"}[1]
