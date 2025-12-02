@@ -1,0 +1,9 @@
+{
+  "type": "swap",
+  "version": "1.0.0",
+  "asset_in": "BTC",
+  "asset_out": "HIVE",
+  "recipient": "alice",
+  "beneficiary": "referrer",
+  "ref_bps": 500
+}

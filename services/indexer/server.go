@@ -27,11 +27,7 @@ func NewServer(svc *Service, port string) *Server {
 	r.HandleFunc("/api/v1/pools/{id}", s.handleGetPool).Methods("GET")
 
 	// Token endpoints
-	r.HandleFunc("/api/v1/tokens", s.handleGetTokens).Methods("GET")
-	r.HandleFunc("/api/v1/tokens/{symbol}", s.handleGetToken).Methods("GET")
 
-	// Deposit endpoints
-	r.HandleFunc("/api/v1/deposits", s.handleGetDeposits).Methods("GET")
 
 	// Health check
 	r.HandleFunc("/health", s.handleHealth).Methods("GET")
@@ -85,48 +81,8 @@ func (s *Server) handleGetPool(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Pool not found", http.StatusNotFound)
 }
 
-// handleGetTokens returns all tokens
-func (s *Server) handleGetTokens(w http.ResponseWriter, r *http.Request) {
-	tokens, err := s.indexer.QueryTokens()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tokens)
-}
 
-// handleGetToken returns a specific token
-func (s *Server) handleGetToken(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	symbol := vars["symbol"]
-
-	// Get the first read model that supports token queries
-	for _, reader := range s.indexer.readers {
-		if dexReader, ok := reader.(*DexReadModel); ok {
-			if token, exists := dexReader.GetToken(symbol); exists {
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(token)
-				return
-			}
-		}
-	}
-
-	http.Error(w, "Token not found", http.StatusNotFound)
-}
-
-// handleGetDeposits returns all deposits
-func (s *Server) handleGetDeposits(w http.ResponseWriter, r *http.Request) {
-	deposits, err := s.indexer.QueryDeposits()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(deposits)
-}
 
 // handleHealth provides health check endpoint
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

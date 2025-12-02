@@ -27,10 +27,6 @@ var deployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if _, err := os.Stat("../contracts/token-registry/main.wasm"); os.IsNotExist(err) {
-			fmt.Println("❌ Token registry contract not built. Run 'cd ../contracts/token-registry && tinygo build -o main.wasm -target=wasm-unknown main.go'")
-			os.Exit(1)
-		}
 
 		// Deploy btc-mapping contract
 		fmt.Println("Deploying btc-mapping contract...")
@@ -41,29 +37,12 @@ var deployCmd = &cobra.Command{
 		}
 		fmt.Printf("✓ Deployed btc-mapping contract at: %s\n", btcContractId)
 
-		// Deploy token-registry contract
-		fmt.Println("Deploying token-registry contract...")
-		registryContractId, err := deployContract("../contracts/token-registry/main.wasm", "token-registry", "Token registry for VSC DEX")
-		if err != nil {
-			fmt.Printf("❌ Failed to deploy token-registry contract: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("✓ Deployed token-registry contract at: %s\n", registryContractId)
 
-		// Register mapped BTC token
-		fmt.Println("Registering BTC token...")
-		err = registerBtcToken(registryContractId)
-		if err != nil {
-			fmt.Printf("❌ Failed to register BTC token: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("✓ Registered BTC token")
 
 		// Save contract addresses to config
 		config := map[string]string{
-			"btcMapping":    btcContractId,
-			"tokenRegistry": registryContractId,
-			"dexRouter":     "dex-router-contract", // Placeholder
+			"btcMapping": btcContractId,
+			"dexRouter":  "dex-router-contract", // Placeholder
 		}
 
 		configData, _ := json.MarshalIndent(config, "", "  ")
@@ -181,21 +160,6 @@ func deployContract(wasmPath, name, description string) (string, error) {
 	return contractId, nil
 }
 
-// registerBtcToken simulates registering the BTC token in the token registry
-func registerBtcToken(registryContractId string) error {
-	// In a real implementation, this would:
-	// 1. Create transaction calling token registry contract
-	// 2. Register BTC token with symbol "BTC", decimals 8, contract ID
-	// 3. Broadcast the transaction
-
-	fmt.Printf("  Registering BTC token in registry: %s\n", registryContractId)
-
-	// Simulate registration delay
-	time.Sleep(50 * time.Millisecond)
-
-	fmt.Println("  BTC token registered successfully")
-	return nil
-}
 
 // checkContractDeployments checks if contracts are deployed by looking for config file
 func checkContractDeployments() bool {
@@ -208,12 +172,8 @@ func checkContractDeployments() bool {
 // checkWasmBuilds checks if WASM files exist
 func checkWasmBuilds() bool {
 	btcWasm := "../contracts/btc-mapping/main.wasm"
-	registryWasm := "../contracts/token-registry/main.wasm"
 
 	if _, err := os.Stat(btcWasm); os.IsNotExist(err) {
-		return false
-	}
-	if _, err := os.Stat(registryWasm); os.IsNotExist(err) {
 		return false
 	}
 	return true

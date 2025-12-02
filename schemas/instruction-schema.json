@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["type", "version", "asset_in", "asset_out", "recipient"],
+  "properties": {
+    "type": {"type": "string", "enum": ["swap", "deposit", "withdrawal"]},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "asset_in": {"type": "string"},
+    "asset_out": {"type": "string"},
+    "recipient": {"type": "string"},
+    "slippage_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "min_amount_out": {"type": "integer", "minimum": 0},
+    "beneficiary": {"type": "string"},
+    "ref_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "return_address": {
+      "type": "object",
+      "properties": {
+        "chain": {"type": "string", "enum": ["BTC", "HIVE"]},
+        "address": {"type": "string"}
+      },
+      "required": ["chain", "address"]
+    },
+    "metadata": {"type": "object"}
+  }
+}

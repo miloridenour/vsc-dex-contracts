@@ -30,8 +30,6 @@ type Service struct {
 type ReadModel interface {
 	HandleEvent(event VSCEvent) error
 	QueryPools() ([]PoolInfo, error)
-	QueryTokens() ([]TokenInfo, error)
-	QueryDeposits() ([]DepositInfo, error)
 }
 
 // PoolInfo represents indexed pool data
@@ -45,23 +43,7 @@ type PoolInfo struct {
 	TotalSupply uint64  `json:"total_supply"`
 }
 
-// TokenInfo represents indexed token data
-type TokenInfo struct {
-	Symbol      string `json:"symbol"`
-	Decimals    uint8  `json:"decimals"`
-	ContractID  string `json:"contract_id"`
-	Description string `json:"description"`
-}
 
-// DepositInfo represents indexed deposit data
-type DepositInfo struct {
-	TxID      string `json:"txid"`
-	VOut      uint32 `json:"vout"`
-	Amount    uint64 `json:"amount"`
-	Owner     string `json:"owner"`
-	Height    uint32 `json:"height"`
-	Confirmed bool   `json:"confirmed"`
-}
 
 // VSCEvent represents a VSC blockchain event
 type VSCEvent struct {
@@ -392,7 +374,7 @@ func (s *Service) startWebSocketIndexing(ctx context.Context) error {
 	s.mu.RUnlock()
 
 	// Build contract filter
-	contractFilter := `["dex-pool", "btc-mapping"]`
+	contractFilter := `["dex-router"]`
 	if len(contracts) > 0 {
 		contractList := "["
 		for i, c := range contracts {
@@ -530,36 +512,4 @@ func (s *Service) QueryPools() ([]PoolInfo, error) {
 	return allPools, nil
 }
 
-// QueryTokens returns all indexed tokens
-func (s *Service) QueryTokens() ([]TokenInfo, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
-	var allTokens []TokenInfo
-	for _, reader := range s.readers {
-		tokens, err := reader.QueryTokens()
-		if err != nil {
-			continue
-		}
-		allTokens = append(allTokens, tokens...)
-	}
-
-	return allTokens, nil
-}
-
-// QueryDeposits returns all indexed deposits
-func (s *Service) QueryDeposits() ([]DepositInfo, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	var allDeposits []DepositInfo
-	for _, reader := range s.readers {
-		deposits, err := reader.QueryDeposits()
-		if err != nil {
-			continue
-		}
-		allDeposits = append(allDeposits, deposits...)
-	}
-
-	return allDeposits, nil
-}

@@ -5,9 +5,12 @@ go 1.24.0
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/stretchr/testify v1.11.1
+	github.com/vsc-eco/vsc-dex-mapping/schemas v0.0.0
 	github.com/vsc-eco/vsc-dex-mapping/sdk/go v0.0.0
+	github.com/xeipuuv/gojsonschema v1.2.0
 )
 
+replace github.com/vsc-eco/vsc-dex-mapping/schemas => ../../schemas
 replace github.com/vsc-eco/vsc-dex-mapping/sdk/go => ../../sdk/go
 replace vsc-node => ../../../go-vsc-node
 

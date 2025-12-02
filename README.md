@@ -1,152 +1,210 @@
-# VSC DEX Mapping
+# VSC DEX Router
 
-A modular, external DEX mapping system for VSC blockchain that enables seamless cross-chain asset swaps through UTXO mapping and automated liquidity routing.
+A unified decentralized exchange system for VSC blockchain that provides automated liquidity management and AMM-based trading through a single router contract.
 
-## 🎯 Status: Production Ready for BTC↔HBD Trading
+## 🎯 Status: Production Ready for HBD/HIVE Trading
 
 **✅ ALL P0 Critical Blockers Resolved:**
-- ✅ **VSC Transaction Broadcasting**: Go SDK, Router, Oracle implementations complete
-- ✅ **Contract State Queries**: Oracle and CLI status checks functional
+- ✅ **VSC Transaction Broadcasting**: Go SDK and Router implementations complete
+- ✅ **Unified DEX Router Contract**: Single contract managing all liquidity pools
 - ✅ **HTTP Service Integrations**: SDK router/indexer calls fully implemented
 - ✅ **CLI Deployment**: Complete deployment workflow
 - ✅ **System Status Checks**: Comprehensive health monitoring
 
 **Core Components - Production Ready:**
-- ✅ **BTC Mapping Contract**: Production-ready SPV verification, TSS integration, proper merkle proofs
-- ✅ **Oracle Service**: Header submission and deposit proof verification with GraphQL integration
-- ✅ **Router Service**: DEX routing logic with VSC contract calls via DEXExecutor interface
+- ✅ **DEX Router Contract**: Unified AMM contract with JSON schema interface
+- ✅ **Router Service**: DEX operation composition and transaction management
 - ✅ **SDK (Go)**: Full VSC GraphQL integration and transaction broadcasting
 - ✅ **CLI Tools**: Complete deployment and monitoring system
 - ✅ **Indexer**: Pool and token data management
 
-**Ready for BTC↔HBD Trading:**
-- ✅ BTC deposit proof verification and token minting
-- ✅ DEX routing for BTC/HBD/HIVE/HBD_SAVINGS pools
+**Ready for HBD/HIVE Trading:**
+- ✅ DEX routing for HBD/HIVE pools with AMM calculations
+- ✅ Liquidity provision and removal operations
 - ✅ SDK integration for seamless user interactions
 - ✅ End-to-end deposit → trade → withdrawal flow
 
 ## Overview
 
-VSC DEX Mapping provides a complete infrastructure for decentralized exchange operations with support for cross-chain assets, automated routing, and real-time indexing. Built as a collection of microservices that integrate with VSC through public APIs (GraphQL, HTTP).
+VSC DEX Router provides a complete decentralized exchange infrastructure with automated liquidity management and AMM-based trading. Features a unified router contract that manages all liquidity pools internally, providing swap, deposit, and withdrawal operations through a standardized JSON interface. Built as a collection of microservices that integrate with VSC through public APIs (GraphQL, HTTP).
 
 ## Features
 
-- **Cross-Chain Asset Mapping**: UTXO-based asset mapping with SPV verification
-- **Automated DEX Routing**: Intelligent route planning with multi-hop support (via HBD intermediary)
-- **AMM Calculations**: Constant product formula with overflow protection using `math/big`
+- **Unified DEX Router**: Single contract managing all liquidity pools internally
+- **AMM Calculations**: Constant product formula (x*y=k) with overflow protection
+- **JSON Schema Interface**: Standardized payload format for all DEX operations
 - **Slippage Protection**: Configurable minimum output amounts
-- **Pool Drain Protection**: Prevents swapping more than 50% of a reserve
+- **Liquidity Management**: Add/remove liquidity with LP token minting
 - **Real-Time Indexing**: Event-driven indexing and query APIs
-- **Extensible Architecture**: Plugin-based design for new blockchains
+- **Referral System**: Optional referral fees for swaps
 - **Multi-Language SDKs**: Go and TypeScript client libraries
+
+## Schema Specification
+
+VSC DEX Mapping uses a standardized JSON schema for all DEX operations. This ensures consistent API interfaces across all services and clients.
+
+### Instruction Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["type", "version", "asset_in", "asset_out", "recipient"],
+  "properties": {
+    "type": {"type": "string", "enum": ["swap", "deposit", "withdrawal"]},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "asset_in": {"type": "string"},
+    "asset_out": {"type": "string"},
+    "recipient": {"type": "string"},
+    "slippage_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "min_amount_out": {"type": "integer", "minimum": 0},
+    "beneficiary": {"type": "string"},
+    "ref_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "return_address": {
+      "type": "object",
+      "properties": {
+        "chain": {"type": "string", "enum": ["HIVE"]},
+        "address": {"type": "string"}
+      },
+      "required": ["chain", "address"]
+    },
+    "metadata": {"type": "object"}
+  }
+}
+```
+
+### Field Descriptions
+
+- **`type`** *(required)*: Operation type - `"swap"`, `"deposit"`, or `"withdrawal"`
+- **`version`** *(required)*: Schema version in semantic format (e.g., `"1.0.0"`)
+- **`asset_in`** *(required)*: Input asset identifier (e.g., `"HBD"`, `"HIVE"`)
+- **`asset_out`** *(required)*: Output asset identifier
+- **`recipient`** *(required)*: VSC address to receive output assets
+- **`slippage_bps`**: Maximum allowed slippage in basis points (0-10000, where 10000 = 100%)
+- **`min_amount_out`**: Minimum acceptable output amount (prevents front-running)
+- **`beneficiary`**: Optional referral beneficiary address
+- **`ref_bps`**: Referral fee in basis points (0-10000)
+- **`return_address`**: Cross-chain return address for failed operations
+- **`metadata`**: Additional operation metadata
+
+### Usage Examples
+
+**HBD to HIVE Swap:**
+```json
+{
+  "type": "swap",
+  "version": "1.0.0",
+  "asset_in": "HBD",
+  "asset_out": "HIVE",
+  "recipient": "hive:user123",
+  "slippage_bps": 50,
+  "min_amount_out": 900000,
+  "beneficiary": "hive:referrer",
+  "ref_bps": 25
+}
+```
+
+**Liquidity Deposit:**
+```json
+{
+  "type": "deposit",
+  "version": "1.0.0",
+  "asset_in": "HBD",
+  "asset_out": "HIVE",
+  "recipient": "hive:user123"
+}
+```
+
+**HBD Withdrawal:**
+```json
+{
+  "type": "withdrawal",
+  "version": "1.0.0",
+  "asset_in": "HBD",
+  "asset_out": "HBD",
+  "recipient": "hive:user123",
+  "return_address": {
+    "chain": "HIVE",
+    "address": "hive:user123"
+  }
+}
+```
 
 ## Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ External        │    │   VSC Node      │    │   DEX Frontend  │
-│ Blockchains     │◄──►│   (Core)        │◄──►│   Applications  │
-│ (Bitcoin)       │    │   GraphQL API   │    │                 │
+│   DEX Frontend   │    │   VSC Node      │    │   Router       │
+│   Applications   │◄──►│   (Core)        │◄──►│   Service      │
+│                  │    │   GraphQL API   │    │                │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          ▲                        ▲                        ▲
          │                        │                        │
     ┌────▼────┐              ┌────▼────┐              ┌────▼────┐
-    │ Oracles │              │ Smart   │              │ Route   │
-    │ Service │─────────────►│Contracts│◄─────────────│Planner  │
-    │         │  Submit      │         │  Execute      │Service  │
-    └─────────┘  Headers     └─────────┘  Swaps        └─────────┘
-                                   ▲                        ▲
-                                   │                        │
-                              ┌────▼────┐              ┌────▼────┐
-                              │ Indexer │              │  SDK    │
-                              │ Service │◄─────────────┤ Libraries│
-                              │         │  Query       │ (Go/TS) │
-                              └─────────┘              └─────────┘
+    │   SDK   │              │ DEX Router│              │  Indexer │
+    │Libraries│─────────────►│ Contract  │◄─────────────│  Service │
+    │ (Go/TS) │  JSON Ops    │           │  Events       │          │
+    └─────────┘              └─────────┘              └─────────┘
 ```
 
 ### Data Flow
 
-**Deposit Flow (BTC → VSC):**
-1. User sends BTC to deposit address
-2. Oracle monitors Bitcoin network and submits headers to `btc-mapping` contract
-3. User generates SPV proof and calls `proveDeposit()` on contract
-4. Contract verifies proof against accepted headers and mints mapped BTC tokens
-5. Tokens appear in user's VSC balance, ready for DEX operations
+**Deposit Flow (Add Liquidity):**
+1. User calls router service with deposit instruction
+2. Router service constructs JSON payload and calls DEX router contract
+3. Contract adds liquidity to specified pool and mints LP tokens
+4. User receives LP tokens representing their pool share
 
-**Swap Flow (BTC → HBD):**
-1. User requests BTC→HBD swap via SDK or frontend
-2. Router service computes optimal route (direct pool or multi-hop via HBD)
-3. Router composes contract call transaction via DEXExecutor interface
-4. SDK broadcasts transaction to VSC via GraphQL
-5. Transaction executes AMM swap on VSC DEX contracts
-6. User receives HBD tokens
+**Swap Flow (Token Exchange):**
+1. User requests swap via SDK or frontend
+2. Router service constructs JSON payload with swap instruction
+3. SDK broadcasts transaction to VSC via GraphQL
+4. DEX router contract executes AMM swap using constant product formula
+5. User receives output tokens
 
-**Withdrawal Flow (VSC → BTC):**
-1. User requests BTC withdrawal, burning mapped tokens
-2. Contract records withdrawal intent
-3. Oracle monitors for burn events and facilitates BTC payout
-4. User receives BTC on target address
+**Withdrawal Flow (Remove Liquidity):**
+1. User calls router service with withdrawal instruction
+2. Router service constructs JSON payload for liquidity removal
+3. Contract burns LP tokens and returns proportional assets
+4. User receives underlying tokens
 
 ## Components
 
 ### Core Services
 
-#### Oracle Service (`services/oracle/`)
-Bitcoin oracle service that:
-- Connects to Bitcoin node (btcd/bitcoind) via RPC
-- Submits block headers to btc-mapping contract
-- Verifies and forwards SPV deposit proofs
-- Handles withdrawal processing
-
-**Running:**
-```bash
-cd services/oracle
-go run cmd/main.go --btc-host localhost:8332 --vsc-node http://localhost:4000
-```
-
 #### DEX Router (`services/router/`)
-Automated swap routing and transaction composition:
-- Computes optimal swap routes across VSC pools
-- Supports direct routes (1-hop) and HBD-mediated routes (2-hop)
-- AMM calculations with overflow protection
-- Slippage and pool drain protection
-- Composes transaction payloads for DEX operations
-- Uses DEXExecutor interface for clean dependency injection
+DEX operation composition and transaction management:
+- Constructs JSON payloads according to standardized schema
+- Supports swap, deposit, and withdrawal operations
+- Calls unified DEX router contract via DEXExecutor interface
+- Provides clean API for frontend and SDK integration
 
 **Running:**
 ```bash
 cd services/router
-go run cmd/main.go --vsc-node http://localhost:4000 --port 8080 --indexer-endpoint http://localhost:8081
+go run cmd/main.go --vsc-node http://localhost:4000 --port 8080 --indexer-endpoint http://localhost:8081 --dex-router-contract "dex-router-contract-id"
 ```
 
-**Note**: The `--indexer-endpoint` flag connects the router to the indexer service for real-time pool data. If not provided, the router falls back to hardcoded test pools.
-
-**Architecture Pattern:**
+**DEXExecutor Interface:**
 ```go
-// DEXExecutor interface for dependency injection
 type DEXExecutor interface {
+    ExecuteDexOperation(ctx context.Context, operationType string, payload string) error
     ExecuteDexSwap(ctx context.Context, amountOut int64, route []string, fee int64) error
 }
-
-// SDK implements the interface
-func (c *Client) ExecuteDexSwapRouter(ctx context.Context, amountOut int64, route []string, fee int64) error
-
-// Router uses executor via dependency injection
-err := s.dexExecutor.ExecuteDexSwap(ctx, result.AmountOut, result.Route, result.Fee0+result.Fee1)
 ```
 
 #### Indexer Service (`services/indexer/`)
 Read model indexer that:
 - **Polls VSC GraphQL** for contract outputs and events (default: every 5 seconds)
-- **Builds projections** for pools, tokens, and bridge operations
-- **Exposes HTTP REST APIs** for frontend consumption (`/api/v1/pools`, `/api/v1/tokens`, `/api/v1/deposits`)
-- **Tracks real-time pool reserves** for accurate DEX routing
+- **Builds projections** for pools, tokens, and DEX operations
+- **Exposes HTTP REST APIs** for frontend consumption (`/api/v1/pools`, `/api/v1/tokens`)
+- **Tracks real-time pool reserves** for accurate DEX operations
 - **Optional WebSocket support** (attempts WebSocket first, falls back to polling if unavailable)
 
 **Running:**
 ```bash
 cd services/indexer
-go run cmd/main.go --http-endpoint http://localhost:4000 --http-port 8081 --contracts "contract-id-1,contract-id-2"
+go run cmd/main.go --http-endpoint http://localhost:4000 --http-port 8081 --contracts "dex-router-contract-id"
 ```
 
 **Indexing Strategy**:
@@ -157,69 +215,40 @@ go run cmd/main.go --http-endpoint http://localhost:4000 --http-port 8081 --cont
   - Tracks block height to only process new events
 - **Optional WebSocket**: If `--ws-endpoint` is provided, attempts WebSocket subscriptions first
   - Automatically falls back to polling if WebSocket connection fails
-- **Event Processing**: Handles `createPool`, `addLiquidity`, `swap`, `registerToken`, `depositMinted`, `depositConfirmed` events
+- **Event Processing**: Handles `pool_created`, `liquidity_added`, `swap_executed`, `registerToken` events
 - **Router Integration**: Router service queries indexer for real-time pool data via `IndexerPoolQuerier` adapter
-  - Future-ready for when VSC supports GraphQL subscriptions
 
 ### Smart Contracts
 
-#### BTC Mapping Contract (`contracts/btc-mapping/`)
-Bitcoin UTXO mapping contract that:
-- Accepts Bitcoin block headers for SPV verification
-- Processes deposit proofs to mint mapped BTC tokens
-- Handles withdrawal requests to burn tokens and authorize BTC spends
-- Implements rolling block header window management
-- Includes TSS (Threshold Signature Scheme) integration
-
-**Building:**
-```bash
-cd contracts/btc-mapping
-tinygo build -o ../../bin/btc-mapping.wasm -target wasm main.go
-```
-
-#### V2 AMM Contract (`contracts/v2-amm/`)
-HBD-anchored Automated Market Maker contract (integrated from `go-contract-template`):
-- **Constant product formula** (x*y=k) for swap calculations
-- **HBD-anchored pools**: Every pool is anchored to HBD (asset0)
-- **Base fees**: Applied only when input side is HBD (default 8 bps = 0.08%)
-- **Slip-adjusted fees**: Optional portion of slippage above baseline kept for LPs
-- **Liquidity provision**: Add/remove liquidity with LP token minting/burning
-- **Referral support**: Optional referral fees (0.01%-10.00%) for swaps
-- **Fee claiming**: System-only function to claim accumulated HBD fees
+#### DEX Router Contract (`contracts/dex-router/`)
+Unified decentralized exchange contract that owns and manages all liquidity pools:
+- **Single contract architecture**: Manages all pools internally with namespaced state
+- **JSON schema interface**: Accepts standardized payloads for all DEX operations
+- **AMM calculations**: Constant product formula (x*y=k) with overflow protection
+- **Liquidity management**: Add/remove liquidity with LP token minting/burning
+- **Referral system**: Optional referral fees for swaps
+- **Fee collection**: Accumulated fees claimable by system accounts
 
 **Key Methods:**
-- `init asset0,asset1,baseFeeBps` - Initialize pool
-- `add_liquidity amt0,amt1` - Add liquidity and mint LP tokens
-- `remove_liquidity lpAmount` - Remove liquidity and burn LP tokens
-- `swap dir,amountIn[,minOut]` - Execute swap (dir: `0to1` or `1to0`)
+- `init` - Initialize the router contract
+- `create_pool` - Create new liquidity pool with specified assets and fee
+- `execute` - Execute DEX operations (swap, deposit, withdrawal) via JSON payload
+- `get_pool` - Query pool information and reserves
 - `claim_fees` - Claim accumulated fees (system-only)
 
 **Building:**
 ```bash
-cd contracts/v2-amm
-tinygo build -o ../../bin/v2-amm.wasm -target wasm main.go
+cd contracts/dex-router
+tinygo build -o ../../bin/dex-router.wasm -target wasm main.go utils.go
 ```
 
-**Note**: This is the actual DEX contract that the router service calls to execute swaps. The router computes routes and calls this contract's `swap` method.
-
-#### Token Registry (`contracts/token-registry/`)
-Registry contract for wrapped/mapped assets:
-- Registers asset metadata (symbol, decimals, owner)
-- Enforces ownership restrictions for mapped tokens
-- Provides token discovery for DEX operations
-
-**Building:**
-```bash
-cd token-registry
-tinygo build -o ../../bin/token-registry.wasm -target wasm main.go
-```
 
 ### Development Tools
 
 #### Go SDK (`sdk/go/`)
 Backend integration library with:
 - VSC transaction broadcasting via GraphQL
-- BTC deposit proof submission
+- DEX operation execution via unified router
 - DEX route computation (HTTP POST to router)
 - Pool and token data queries (HTTP GET to indexer)
 - Withdrawal request handling
@@ -231,16 +260,17 @@ client := vscdex.NewClient(vscdex.Config{
     Endpoint: "http://localhost:4000",
     Username: "your-username",
     Contracts: vscdex.ContractAddresses{
-        BtcMapping: "vsc1...",
-        DexRouter:   "vsc1...",
+        DexRouter: "dex-router-contract-id",
     },
 })
 
-// Compute route
-route, err := client.ComputeDexRoute(ctx, "BTC", "HBD", 100000)
-
-// Execute swap
-err = client.ExecuteDexSwap(ctx, route)
+// Execute DEX swap
+result, err := client.ExecuteDexSwap(ctx, &RouteResult{
+    AmountIn:  1000000,
+    AssetIn:   "HBD",
+    AssetOut:  "HIVE",
+    MinAmountOut: 900000,
+})
 ```
 
 #### TypeScript SDK (`sdk/ts/`)
@@ -258,7 +288,6 @@ Deployment and administration utilities:
 
 - Go 1.21+ (Go 1.24+ recommended for go-vsc-node compatibility)
 - TinyGo (for contract compilation)
-- Bitcoin Core or btcd (for oracle)
 - VSC node running locally or remote endpoint
 
 ### Setup
@@ -271,8 +300,8 @@ Deployment and administration utilities:
 
 2. **Build contracts**:
    ```bash
-   cd contracts/btc-mapping
-   tinygo build -o ../../bin/btc-mapping.wasm -target wasm main.go
+   cd contracts/dex-router
+   tinygo build -o ../../bin/dex-router.wasm -target wasm main.go utils.go
    ```
 
 3. **Deploy contracts** (requires VSC node access):
@@ -282,14 +311,11 @@ Deployment and administration utilities:
 
 4. **Start services**:
    ```bash
-   # Terminal 1: Oracle
-   go run services/oracle/cmd/main.go --btc-host localhost:8332 --vsc-node http://localhost:4000
+   # Terminal 1: Router (connected to indexer)
+   go run services/router/cmd/main.go --vsc-node http://localhost:4000 --port 8080 --indexer-endpoint http://localhost:8081 --dex-router-contract "dex-router-contract-id"
 
-   # Terminal 2: Router (connected to indexer)
-   go run services/router/cmd/main.go --vsc-node http://localhost:4000 --port 8080 --indexer-endpoint http://localhost:8081
-
-   # Terminal 3: Indexer
-   go run services/indexer/cmd/main.go --http-endpoint http://localhost:4000 --http-port 8081 --contracts "btc-mapping-contract-id,dex-router-contract-id"
+   # Terminal 2: Indexer
+   go run services/indexer/cmd/main.go --http-endpoint http://localhost:4000 --http-port 8081 --contracts "dex-router-contract-id"
    ```
 
 5. **Check system status**:
@@ -297,24 +323,26 @@ Deployment and administration utilities:
    ./cli status
    ```
 
-6. **Use SDK for BTC↔HBD trading**:
+6. **Use SDK for DEX operations**:
    ```go
    client := sdk.NewClient(&sdk.Config{
        Endpoint: "http://localhost:4000",
        Username: "your-username",
        Contracts: sdk.ContractConfig{
-           BtcMapping: "btc-mapping-contract",
-           DexRouter:  "dex-router-contract",
+           DexRouter: "dex-router-contract",
        },
    })
 
-   // Deposit BTC
-   proof := createBtcDepositProof(txid, vout, amount, blockHeader)
-   mintedAmount, _ := client.ProveBtcDeposit(ctx, proof)
+   // Execute swap
+   result, _ := client.ExecuteDexSwap(ctx, &RouteResult{
+       AmountIn:  1000000, // 1 HBD
+       AssetIn:   "HBD",
+       AssetOut:  "HIVE",
+       MinAmountOut: 900000,
+   })
 
-   // Trade BTC for HBD
-   route, _ := client.ComputeDexRoute(ctx, "BTC", "HBD", 100000)
-   client.ExecuteDexSwap(ctx, route)
+   // Query pools
+   pools, _ := client.GetPools(ctx)
    ```
 
 ## Project Structure
@@ -322,12 +350,9 @@ Deployment and administration utilities:
 ```
 vsc-dex-mapping/
 ├── contracts/          # Smart contracts (TinyGo)
-│   ├── btc-mapping/   # Bitcoin UTXO mapping contract
-│   ├── v2-amm/        # HBD-anchored AMM contract (from go-contract-template)
-│   └── token-registry/ # Token metadata registry
+│   └── dex-router/    # Unified DEX router contract
 ├── services/           # Microservices (Go)
-│   ├── oracle/        # Bitcoin oracle service
-│   ├── router/        # DEX routing service
+│   ├── router/        # DEX operation service
 │   └── indexer/       # Event indexer service
 ├── sdk/               # Client libraries
 │   ├── go/            # Go SDK
@@ -337,7 +362,7 @@ vsc-dex-mapping/
 │   ├── architecture.md
 │   ├── getting-started.md
 │   └── migration-guide.md
-├── e2e/               # End-to-end tests
+├── schemas/           # JSON schema specifications
 └── scripts/           # Build and deployment scripts
 ```
 
@@ -345,51 +370,31 @@ vsc-dex-mapping/
 
 ### ✅ Completed Components
 
-#### **BTC Mapping Contract** (`contracts/btc-mapping/`)
-- ✅ Production-ready SPV verification with merkle proofs
-- ✅ TSS (Threshold Signature Scheme) integration for key management
-- ✅ Rolling block header window management
-- ✅ UTXO tracking and spend verification
-- ✅ Transfer functionality for mapped tokens
-- ✅ Public key registration and key pair creation
-- ✅ Advanced features: Block seeding, header addition, oracle-controlled operations
+#### **DEX Router Contract** (`contracts/dex-router/`)
+- ✅ Unified contract managing all liquidity pools internally
+- ✅ JSON schema interface for standardized DEX operations
+- ✅ Constant product AMM (x*y=k) with overflow protection
+- ✅ Liquidity management with LP token minting/burning
+- ✅ Referral system with configurable fee sharing
+- ✅ Fee collection and claiming for system accounts
+- ✅ Multi-pool support with namespaced state storage
 
-#### **V2 AMM Contract** (`contracts/v2-amm/`)
-- ✅ Constant product AMM (x*y=k) implementation
-- ✅ HBD-anchored pool design
-- ✅ Base fee system (HBD input only)
-- ✅ Slip-adjusted fee mechanism
-- ✅ Liquidity provision/removal with LP tokens
-- ✅ Referral fee support
-- ✅ Fee claiming functionality
-- ✅ System safety functions
-- ✅ Integrated from `go-contract-template` examples
-
-#### **Oracle Service** (`services/oracle/`)
-- ✅ Bitcoin RPC client integration
-- ✅ Header fetching from Bitcoin node
-- ✅ Contract tip height querying
-- ✅ Deposit proof validation against local headers
-- ✅ Transaction broadcasting to VSC contracts via GraphQL
 
 #### **DEX Router** (`services/router/`)
-- ✅ Route computation for BTC↔HBD direct pairs
-- ✅ Two-hop routing through HBD for complex pairs (e.g., BTC→HIVE via BTC→HBD→HIVE)
-- ✅ AMM calculations (constant product formula) with `math/big` for overflow protection
-- ✅ Slippage protection with configurable tolerance
-- ✅ Pool drain protection (max 50% of reserve)
-- ✅ Contract call composition via DEXExecutor interface
-- ✅ Pool discovery logic
-- ✅ Comprehensive test coverage (29 tests, all passing)
+- ✅ JSON payload construction for DEX operations
+- ✅ Support for swap, deposit, and withdrawal operations
+- ✅ Unified contract interface via DEXExecutor
+- ✅ Input validation and error handling
+- ✅ Referral fee parameter support
+- ✅ Slippage protection configuration
 
 #### **SDK (Go)** (`sdk/go/`)
 - ✅ VSC transaction broadcasting via GraphQL
-- ✅ BTC deposit proof submission
-- ✅ DEX route computation (HTTP POST to router service)
+- ✅ DEX operation execution via unified router contract
 - ✅ Pool and token data queries (HTTP GET to indexer service)
-- ✅ Withdrawal request handling
+- ✅ JSON payload construction for DEX operations
+- ✅ DEXExecutor interface implementation
 - ✅ Proper VscContractCall serialization (Payload as JSON string)
-- ✅ DEXExecutor interface implementation for router integration
 
 #### **CLI Tools** (`cli/`)
 - ✅ Contract deployment workflow
@@ -399,12 +404,10 @@ vsc-dex-mapping/
 #### **Indexer** (`services/indexer/`)
 - ✅ **Fully Implemented**: HTTP polling-based event indexing
 - ✅ Pool data read models with real-time updates
-- ✅ Token registry queries
-- ✅ Deposit tracking (BTC deposits)
-- ✅ HTTP API endpoints (`/api/v1/pools`, `/api/v1/tokens`, `/api/v1/deposits`)
+- ✅ HTTP API endpoints (`/api/v1/pools`)
 - ✅ Router integration via `IndexerPoolQuerier` adapter
 - ✅ WebSocket support (optional, with polling fallback)
-- ✅ Event processing for pool creation, liquidity changes, swaps, token registration
+- ✅ Event processing for pool creation, liquidity changes, swaps
 
 ### ⚠️ Implementation Notes
 
@@ -457,13 +460,22 @@ go test -cover ./...
 
 ### Test Coverage
 
-- ✅ **29 router tests** - All passing
-- ✅ **Edge case coverage** - Comprehensive
-  - Integer overflow protection
-- ✅ **AMM calculations** - Tested with `math/big`
-- ✅ **Slippage protection** - Tested
-- ✅ **Pool drain protection** - Tested
-- ✅ **Two-hop swap error handling** - Tested
+**Router Service** (`services/router/`):
+- ✅ **JSON payload construction tests** - Validating instruction structure
+- ✅ **DEX operation execution tests** - Testing unified contract interface
+- ✅ **Input validation tests** - Error handling for invalid operations
+- ✅ **Mock executor tests** - Testing DEXExecutor interface implementation
+
+**Indexer Service** (`services/indexer/`):
+- ⚠️ **0 tests** - **CRITICAL GAP**: Fully implemented but completely untested
+- ⚠️ **Missing**: Event handling, polling logic, HTTP endpoints, error handling
+- 📋 **See**: `TEST_COVERAGE_REPORT.md` for detailed test requirements
+
+**SDK** (`sdk/go/`):
+- ⚠️ **Unknown coverage** - Needs verification
+
+**E2E Tests** (`e2e/`):
+- ⚠️ **Stubbed** - Tests exist but use mocks, need real implementation
 
 ### E2E Tests
 
@@ -484,16 +496,16 @@ make build
 
 # Build individual services
 cd services/router && go build
-cd contracts/btc-mapping && tinygo build -target wasm
+cd contracts/dex-router && tinygo build -target wasm
 ```
 
 ### Development Workflow
 
 1. **Contract changes**:
    ```bash
-   cd contracts/btc-mapping
+   cd contracts/dex-router
    # Edit main.go
-   tinygo build -o ../../bin/btc-mapping.wasm -target wasm main.go
+   tinygo build -o ../../bin/dex-router.wasm -target wasm main.go utils.go
    go run ../../cli/main.go deploy
    ```
 
@@ -507,9 +519,18 @@ cd contracts/btc-mapping && tinygo build -target wasm
    ```go
    client := vscdex.NewClient(vscdex.Config{
        Endpoint: "http://localhost:4000",
+       Username: "your-username",
        Contracts: vscdex.ContractAddresses{
-           BtcMapping: "your-btc-mapping-contract-id",
+           DexRouter: "dex-router-contract-id",
        },
+   })
+
+   // Execute DEX operations
+   result, err := client.ExecuteDexSwap(ctx, &RouteResult{
+       AmountIn: 1000000,
+       AssetIn: "HBD",
+       AssetOut: "HIVE",
+       MinAmountOut: 900000,
    })
    ```
 
@@ -521,12 +542,8 @@ Services can be configured via command-line flags or environment variables:
 - `HTTP_ENDPOINT`: VSC GraphQL HTTP endpoint for indexer (default: `http://localhost:4000`)
 - `POLL_INTERVAL`: Indexer polling interval (default: `5s`)
 - `CONTRACTS`: Comma-separated list of contract IDs to monitor
-- `BTC_RPC_HOST`: Bitcoin RPC host:port (default: `localhost:8332`)
-- `BTC_RPC_USER`: Bitcoin RPC username
-- `BTC_RPC_PASS`: Bitcoin RPC password
 - `ROUTER_PORT`: Router service HTTP port (default: `8080`)
 - `INDEXER_PORT`: Indexer service HTTP port (default: `8081`)
-- `ORACLE_PORT`: Oracle service HTTP port (default: `8082`)
 
 ## Compatibility with go-vsc-node
 
@@ -554,10 +571,10 @@ The DEX mapping implementation is **compatible** with the latest go-vsc-node cha
 
 ## Security Considerations
 
-- **SPV Verification**: All deposits require Bitcoin SPV proofs verified against rolling header window
-- **Confirmation Requirements**: Minimum 6 BTC confirmations before deposits are accepted
-- **Contract Ownership**: Mapped tokens controlled by mapping contract, preventing unauthorized minting
-- **Oracle Independence**: Multiple oracles can operate for redundancy and verification
+- **Contract Ownership**: All pool operations controlled by unified DEX router contract
+- **AMM Safety**: Constant product formula with overflow protection prevents calculation errors
+- **Slippage Protection**: Configurable minimum output validation prevents front-running
+- **Fee Bounds**: Configurable fee limits prevent excessive fee extraction
 - **Slippage Protection**: Configurable minimum output amounts prevent front-running
 - **Pool Drain Protection**: Prevents swapping more than 50% of a reserve
 - **Overflow Protection**: AMM calculations use `math/big` to prevent integer overflow
@@ -569,10 +586,6 @@ The DEX mapping implementation is **compatible** with the latest go-vsc-node cha
 - Check that you have sufficient RC for contract deployment
 - Verify contract compilation succeeded (`tinygo build`)
 
-### Oracle Connection Issues
-- Ensure Bitcoin node is running with RPC enabled
-- Check RPC credentials and network connectivity
-- Verify Bitcoin node is synced
 
 ### Service Communication Issues
 - Confirm VSC GraphQL WebSocket endpoint is accessible
@@ -597,8 +610,72 @@ The DEX mapping implementation is **compatible** with the latest go-vsc-node cha
 
 MIT License - see LICENSE file for details
 
+## Testing
+
+### Unit Tests
+Run mathematical and logical unit tests for core DEX algorithms:
+
+```bash
+# Run DEX router unit tests
+cd contracts/dex-router/test && go test -v ./...
+
+# Run with coverage report
+cd contracts/dex-router/test && go test -cover -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+**Coverage Areas:**
+- ✅ AMM constant product calculations
+- ✅ Slippage protection algorithms
+- ✅ Fee and referral calculations
+- ✅ JSON schema validation
+- ✅ Liquidity math (LP tokens, withdrawals)
+- ✅ Core mathematical functions
+
+### E2E Test Suite
+Run comprehensive end-to-end tests covering all DEX functionality:
+
+```bash
+# Run automated E2E tests (requires running services)
+./test-dex-e2e.sh
+
+# Run interactive demo (requires running services)
+node demo-dex.js
+```
+
+**E2E Coverage:**
+- ✅ Pool creation (HIVE-HBD, BTC-HBD)
+- ✅ Liquidity provision and withdrawal
+- ✅ Direct and two-hop swaps
+- ✅ Error handling with return addresses
+- ✅ Referral fees and fee collection
+- ✅ Slippage protection
+
+See [E2E Test Documentation](docs/examples/dex-e2e-test.md) for detailed scenarios.
+
+### Manual Testing
+```bash
+# Test pool creation
+curl -X POST http://localhost:8080/api/v1/contract/dex-router/create_pool \
+  -H "Content-Type: application/json" \
+  -d '{"asset0": "HBD", "asset1": "HIVE", "fee_bps": 8}'
+
+# Test swap execution
+curl -X POST http://localhost:8080/api/v1/contract/dex-router/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "swap",
+    "version": "1.0.0",
+    "asset_in": "BTC",
+    "asset_out": "HIVE",
+    "recipient": "user",
+    "min_amount_out": 95000
+  }'
+```
+
 ## Additional Documentation
 
 - [Architecture Details](docs/architecture.md) - Detailed architecture documentation
 - [Getting Started Guide](docs/getting-started.md) - Extended setup and development guide
 - [Migration Guide](docs/migration-guide.md) - Migration from go-vsc-node internal DEX
+- [E2E Test Examples](docs/examples/) - Comprehensive test scenarios and API examples

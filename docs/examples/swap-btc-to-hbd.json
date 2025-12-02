@@ -1,0 +1,7 @@
+{
+  "type": "swap",
+  "version": "1.0.0",
+  "asset_in": "BTC",
+  "asset_out": "HBD",
+  "recipient": "alice"
+}

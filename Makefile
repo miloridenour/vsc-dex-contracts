@@ -3,7 +3,6 @@
 # Test all components
 test:
 	cd contracts/btc-mapping && tinygo test -v ./...
-	cd contracts/token-registry && tinygo test -v ./...
 	go test -v ./services/...
 	go test -v ./sdk/go/...
 	cd sdk/ts && npm test
@@ -25,7 +24,6 @@ sdk:
 # Build contracts
 contracts:
 	cd contracts/btc-mapping && tinygo build -o ../../bin/btc-mapping.wasm -target wasm main.go
-	cd contracts/token-registry && tinygo build -o ../../bin/token-registry.wasm -target wasm main.go
 
 # Clean build artifacts
 clean:
@@ -43,9 +41,28 @@ setup:
 e2e:
 	cd e2e && go test -v -timeout 10m ./...
 
+# Run unit tests
+test:
+	cd contracts/dex-router/test && go test -v ./...
+
+# Run unit tests with coverage
+test-cover:
+	cd contracts/dex-router/test && go test -cover -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+# Run E2E tests
+e2e:
+	./test-dex-e2e.sh
+
+# Run demo
+demo:
+	node demo-dex.js
+
 # Format code
 fmt:
 	go fmt ./...
 	cd sdk/ts && npm run fmt
+
 
 

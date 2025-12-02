@@ -28,9 +28,7 @@ type Config struct {
 }
 
 type ContractAddresses struct {
-	BtcMapping     string
-	TokenRegistry  string
-	DexRouter      string
+	DexRouter string
 }
 
 // NewClient creates a new VSC DEX client
@@ -41,77 +39,9 @@ func NewClient(config Config) *Client {
 	}
 }
 
-// RegisterMappedToken registers a new mapped token in the registry
-func (c *Client) RegisterMappedToken(ctx context.Context, symbol string, decimals uint8, owner string) error {
-	// Call token-registry contract
-	payload := fmt.Sprintf(`{
-		"contract": "%s",
-		"method": "registerToken",
-		"args": {
-			"symbol": "%s",
-			"decimals": %d,
-			"owner": "%s"
-		}
-	}`, c.config.Contracts.TokenRegistry, symbol, decimals, owner)
 
-	return c.broadcastTx(ctx, payload)
-}
 
-// SubmitBtcHeaders submits Bitcoin headers to the mapping contract
-func (c *Client) SubmitBtcHeaders(ctx context.Context, headers []byte) error {
-	// Call btc-mapping contract
-	payload := fmt.Sprintf(`{
-		"contract": "%s",
-		"method": "submitHeaders",
-		"args": {
-			"headers": "%x"
-		}
-	}`, c.config.Contracts.BtcMapping, headers)
 
-	return c.broadcastTx(ctx, payload)
-}
-
-// ProveBtcDeposit submits a Bitcoin deposit proof
-func (c *Client) ProveBtcDeposit(ctx context.Context, proof []byte) (uint64, error) {
-	// Call btc-mapping contract
-	payload := fmt.Sprintf(`{
-		"contract": "%s",
-		"method": "proveDeposit",
-		"args": {
-			"proof": "%x"
-		}
-	}`, c.config.Contracts.BtcMapping, proof)
-
-	err := c.broadcastTx(ctx, payload)
-	if err != nil {
-		return 0, err
-	}
-
-	// In a real implementation, we would parse the transaction response
-	// to get the actual minted amount. For now, simulate based on proof.
-	if len(proof) >= 44 {
-		// Extract amount from proof (bytes 36-43)
-		amount := uint64(proof[36]) | uint64(proof[37])<<8 | uint64(proof[38])<<16 | uint64(proof[39])<<24 |
-		          uint64(proof[40])<<32 | uint64(proof[41])<<40 | uint64(proof[42])<<48 | uint64(proof[43])<<56
-		return amount, nil
-	}
-
-	return 0, fmt.Errorf("invalid proof format")
-}
-
-// RequestBtcWithdrawal burns mapped BTC tokens for withdrawal
-func (c *Client) RequestBtcWithdrawal(ctx context.Context, amount uint64, btcAddress string) error {
-	payload := fmt.Sprintf(`{
-		"contract": "%s",
-		"method": "requestWithdraw",
-		"args": {
-			"amount": %d,
-			"btcAddress": "%s"
-		}
-	}`, c.config.Contracts.BtcMapping, amount, btcAddress)
-
-	return c.broadcastTx(ctx, payload)
-}
 
 // ComputeDexRoute computes an optimal DEX swap route
 func (c *Client) ComputeDexRoute(ctx context.Context, fromAsset, toAsset string, amount int64) (*RouteResult, error) {
@@ -165,24 +95,35 @@ type RouteResult struct {
 
 // ExecuteDexSwap executes a computed DEX swap
 func (c *Client) ExecuteDexSwap(ctx context.Context, route *RouteResult) error {
-	// Serialize the route to JSON
-	routeJSON, err := json.Marshal(route.Route)
-	if err != nil {
-		return fmt.Errorf("failed to serialize route: %w", err)
-	}
-
-	// Call DEX contract with computed route
+	// For the new unified contract, we need to construct a proper swap instruction
+	// This is a simplified implementation - in practice, more parameters would be needed
 	payload := fmt.Sprintf(`{
 		"contract": "%s",
-		"method": "executeSwap",
+		"method": "execute",
 		"args": {
-			"route": %s,
-			"amountOut": %d,
-			"fee": %d
+			"type": "swap",
+			"version": "1.0.0",
+			"asset_in": "HBD",
+			"asset_out": "HIVE",
+			"recipient": "%s",
+			"min_amount_out": %d
 		}
-	}`, c.config.Contracts.DexRouter, string(routeJSON), route.AmountOut, route.Fee)
+	}`, c.config.Contracts.DexRouter, c.config.Username, route.AmountOut)
 
 	return c.broadcastTx(ctx, payload)
+}
+
+// ExecuteDexOperation implements the router.DEXExecutor interface
+// This executes operations on the unified DEX router contract
+func (c *Client) ExecuteDexOperation(ctx context.Context, operationType string, payload string) error {
+	// Call the unified DEX router contract
+	payloadJSON := fmt.Sprintf(`{
+		"contract": "%s",
+		"method": "%s",
+		"args": %s
+	}`, c.config.DexRouter, operationType, payload)
+
+	return c.broadcastTx(ctx, payloadJSON)
 }
 
 // ExecuteDexSwapRouter implements the router.DEXExecutor interface
@@ -302,36 +243,6 @@ func (c *Client) GetPools(ctx context.Context) ([]PoolInfo, error) {
 	return pools, nil
 }
 
-// GetTokens queries registered tokens from indexer
-func (c *Client) GetTokens(ctx context.Context) ([]TokenInfo, error) {
-	// Make HTTP call to indexer service
-	indexerURL := fmt.Sprintf("%s/indexer/tokens", c.config.Endpoint)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", indexerURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Failed to query indexer for tokens: %v", err)
-		return nil, fmt.Errorf("failed to query tokens: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("indexer returned status %d", resp.StatusCode)
-	}
-
-	// Parse response
-	var tokens []TokenInfo
-	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
-		return nil, fmt.Errorf("failed to parse tokens response: %w", err)
-	}
-
-	return tokens, nil
-}
 
 type PoolInfo struct {
 	ID       string  `json:"id"`
@@ -342,9 +253,3 @@ type PoolInfo struct {
 	Fee      float64 `json:"fee"`
 }
 
-type TokenInfo struct {
-	Symbol      string `json:"symbol"`
-	Decimals    uint8  `json:"decimals"`
-	ContractID  string `json:"contract_id"`
-	Description string `json:"description"`
-}

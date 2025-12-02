@@ -21,16 +21,15 @@ func main() {
 		vscUsername    = flag.String("vsc-username", "", "VSC username")
 		port           = flag.String("port", "8080", "HTTP server port")
 		indexerEndpoint = flag.String("indexer-endpoint", "http://localhost:8081", "Indexer service HTTP endpoint")
-		btcMapping     = flag.String("btc-mapping-contract", "", "BTC mapping contract ID")
-		tokenRegistry  = flag.String("token-registry-contract", "", "Token registry contract ID")
 		dexRouter      = flag.String("dex-router-contract", "", "DEX router contract ID")
 	)
 	flag.Parse()
 
 	config := router.VSCConfig{
-		Endpoint: *vscNode,
-		Key:      *vscKey,
-		Username: *vscUsername,
+		Endpoint:          *vscNode,
+		Key:               *vscKey,
+		Username:          *vscUsername,
+		DexRouterContract: *dexRouter,
 	}
 
 	// Create SDK client to use as DEXExecutor
@@ -39,9 +38,7 @@ func main() {
 		Username: *vscUsername,
 		ActiveKey: *vscKey,
 		Contracts: vscdex.ContractAddresses{
-			BtcMapping:    *btcMapping,
-			TokenRegistry: *tokenRegistry,
-			DexRouter:     *dexRouter,
+			DexRouter: *dexRouter,
 		},
 	})
 

@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -24,6 +25,9 @@ func NewServer(svc *Service, port string) *Server {
 
 	// Route computation endpoint
 	r.HandleFunc("/api/v1/route", s.handleComputeRoute).Methods("POST")
+
+	// Instruction-based swap endpoint
+	r.HandleFunc("/api/v1/instruction", s.handleExecuteInstruction).Methods("POST")
 
 	// Health check
 	r.HandleFunc("/health", s.handleHealth).Methods("GET")
@@ -77,6 +81,46 @@ func (s *Server) handleComputeRoute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := s.router.ComputeRoute(r.Context(), params)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// handleExecuteInstruction handles instruction-based swap requests
+func (s *Server) handleExecuteInstruction(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Instruction []byte `json:"instruction"`
+		AmountIn    int64   `json:"amountIn"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Instruction) == 0 {
+		http.Error(w, "instruction is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.AmountIn <= 0 {
+		http.Error(w, "amountIn must be greater than 0", http.StatusBadRequest)
+		return
+	}
+
+	// Parse and convert instruction to SwapParams
+	params, err := ParseAndConvertInstruction(req.Instruction, req.AmountIn)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to process instruction: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Execute the swap
+	result, err := s.router.ComputeRoute(r.Context(), *params)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
