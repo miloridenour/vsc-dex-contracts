@@ -23,14 +23,15 @@ func TestGetPoolByID_Success(t *testing.T) {
 		assert.Equal(t, "/api/v1/pools/test-pool-123", r.URL.Path)
 		assert.Equal(t, "GET", r.Method)
 
-		pool := IndexerPoolInfo{
-			ID:          "test-pool-123",
-			Asset0:      "BTC",
-			Asset1:      "HBD",
-			Reserve0:    100000000, // 1 BTC
-			Reserve1:    10000000,  // 10 HBD
-			Fee:         0.08,      // 0.08%
-			TotalSupply: 1000000,
+		// Mock indexer response (Fee as float64 percentage)
+		pool := map[string]interface{}{
+			"id":           "test-pool-123",
+			"asset0":       "BTC",
+			"asset1":       "HBD",
+			"reserve0":     float64(100000000), // 1 BTC
+			"reserve1":     float64(10000000),  // 10 HBD
+			"fee":          0.08,                // 0.08% (will be converted to 8 basis points)
+			"total_supply": float64(1000000),
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -43,7 +44,7 @@ func TestGetPoolByID_Success(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, pool)
-	assert.Equal(t, "test-pool-123", pool.ContractId)
+	assert.Equal(t, "test-pool-123", pool.ID)
 	assert.Equal(t, "BTC", pool.Asset0)
 	assert.Equal(t, "HBD", pool.Asset1)
 	assert.Equal(t, uint64(100000000), pool.Reserve0)
@@ -108,30 +109,31 @@ func TestGetPoolsByAsset_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/v1/pools", r.URL.Path)
 
-		pools := []IndexerPoolInfo{
+		// Mock indexer response (Fee as float64 percentage)
+		pools := []map[string]interface{}{
 			{
-				ID:       "pool-1",
-				Asset0:   "BTC",
-				Asset1:   "HBD",
-				Reserve0: 100000000,
-				Reserve1: 10000000,
-				Fee:      0.08,
+				"id":       "pool-1",
+				"asset0":   "BTC",
+				"asset1":   "HBD",
+				"reserve0": float64(100000000),
+				"reserve1": float64(10000000),
+				"fee":      0.08,
 			},
 			{
-				ID:       "pool-2",
-				Asset0:   "HBD",
-				Asset1:   "HIVE",
-				Reserve0: 10000000,
-				Reserve1: 10000000,
-				Fee:      0.08,
+				"id":       "pool-2",
+				"asset0":   "HBD",
+				"asset1":   "HIVE",
+				"reserve0": float64(10000000),
+				"reserve1": float64(10000000),
+				"fee":      0.08,
 			},
 			{
-				ID:       "pool-3",
-				Asset0:   "ETH",
-				Asset1:   "HBD",
-				Reserve0: 50000000,
-				Reserve1: 10000000,
-				Fee:      0.10,
+				"id":       "pool-3",
+				"asset0":   "ETH",
+				"asset1":   "HBD",
+				"reserve0": float64(50000000),
+				"reserve1": float64(10000000),
+				"fee":      0.1,
 			},
 		}
 
@@ -145,16 +147,16 @@ func TestGetPoolsByAsset_Success(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Len(t, pools, 1)
-	assert.Equal(t, "pool-1", pools[0].ContractId)
+	assert.Equal(t, "pool-1", pools[0].ID)
 	assert.Equal(t, "BTC", pools[0].Asset0)
 }
 
 func TestGetPoolsByAsset_FiltersCorrectly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pools := []IndexerPoolInfo{
-			{ID: "pool-1", Asset0: "BTC", Asset1: "HBD", Reserve0: 100000000, Reserve1: 10000000, Fee: 0.08},
-			{ID: "pool-2", Asset0: "HBD", Asset1: "HIVE", Reserve0: 10000000, Reserve1: 10000000, Fee: 0.08},
-			{ID: "pool-3", Asset0: "HBD", Asset1: "BTC", Reserve0: 10000000, Reserve1: 100000000, Fee: 0.08}, // HBD first
+		pools := []map[string]interface{}{
+			{"id": "pool-1", "asset0": "BTC", "asset1": "HBD", "reserve0": float64(100000000), "reserve1": float64(10000000), "fee": 0.08},
+			{"id": "pool-2", "asset0": "HBD", "asset1": "HIVE", "reserve0": float64(10000000), "reserve1": float64(10000000), "fee": 0.08},
+			{"id": "pool-3", "asset0": "HBD", "asset1": "BTC", "reserve0": float64(10000000), "reserve1": float64(100000000), "fee": 0.08}, // HBD first
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -199,13 +201,15 @@ func TestGetPoolsByAsset_FeeConversion(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				pool := IndexerPoolInfo{
-					ID:       "test-pool",
-					Asset0:   "BTC",
-					Asset1:   "HBD",
-					Reserve0: 100000000,
-					Reserve1: 10000000,
-					Fee:      tc.fee,
+				// Mock indexer response (which has Fee as float64 percentage)
+				pool := map[string]interface{}{
+					"id":          "test-pool",
+					"asset0":      "BTC",
+					"asset1":      "HBD",
+					"reserve0":    float64(100000000),
+					"reserve1":    float64(10000000),
+					"fee":         tc.fee, // float64 percentage
+					"total_supply": float64(1000000),
 				}
 
 				w.Header().Set("Content-Type", "application/json")

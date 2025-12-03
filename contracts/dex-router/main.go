@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"math/bits"
 	"strconv"
-	"strings"
-	"vsc-node/modules/wasm/sdk"
+	sdk "dex-router/sdk"
 )
 
 func main() {}
@@ -282,7 +281,6 @@ func executeTwoHopSwap(instruction DexInstruction) *string {
 
 	// Get pool information
 	asset1_0 := getPoolAsset0(pool1Id)
-	asset1_1 := getPoolAsset1(pool1Id)
 	r1_0 := getPoolReserve0(pool1Id)
 	r1_1 := getPoolReserve1(pool1Id)
 	fee1 := getPoolFee(pool1Id)
@@ -490,7 +488,6 @@ func executeAddLiquidity(poolId string, amt0U, amt1U uint64, provider string) *s
 	setPoolTotalLp(poolId, totalLP + minted)
 
 	// Mint LP tokens to provider
-	providerAddr := sdk.Address(provider)
 	currentLP := getPoolLp(poolId, provider)
 	setPoolLp(poolId, provider, currentLP + minted)
 

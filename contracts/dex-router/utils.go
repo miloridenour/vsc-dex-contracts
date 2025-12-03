@@ -3,7 +3,7 @@ package main
 import (
 	"math/bits"
 	"strconv"
-	"vsc-node/modules/wasm/sdk"
+	sdk "dex-router/sdk"
 )
 
 // Keys for state storage

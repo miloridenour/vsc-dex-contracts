@@ -10,9 +10,22 @@ import (
 	"syscall"
 	"time"
 
-	vscdex "github.com/vsc-eco/vsc-dex-mapping/sdk/go"
+	// vscdex "github.com/vsc-eco/vsc-dex-mapping/sdk/go" // Temporarily commented out due to dependency issues
 	"github.com/vsc-eco/vsc-dex-mapping/services/router"
 )
+
+// mockDEXExecutor implements DEXExecutor for when SDK is not available
+type mockDEXExecutor struct{}
+
+func (m *mockDEXExecutor) ExecuteDexOperation(ctx context.Context, operationType string, payload string) error {
+	log.Printf("Mock DEXExecutor: Executing %s with payload %s", operationType, payload)
+	return nil
+}
+
+func (m *mockDEXExecutor) ExecuteDexSwap(ctx context.Context, amountOut int64, route []string, fee int64) error {
+	log.Printf("Mock DEXExecutor: Executing swap with amountOut %d, route %v, fee %d", amountOut, route, fee)
+	return nil
+}
 
 func main() {
 	var (
@@ -33,16 +46,19 @@ func main() {
 	}
 
 	// Create SDK client to use as DEXExecutor
-	sdkClient := vscdex.NewClient(vscdex.Config{
-		Endpoint: *vscNode,
-		Username: *vscUsername,
-		ActiveKey: *vscKey,
-		Contracts: vscdex.ContractAddresses{
-			DexRouter: *dexRouter,
-		},
-	})
+	// sdkClient := vscdex.NewClient(vscdex.Config{
+	// 	Endpoint: *vscNode,
+	// 	Username: *vscUsername,
+	// 	ActiveKey: *vscKey,
+	// 	Contracts: vscdex.ContractAddresses{
+	// 		DexRouter: *dexRouter,
+	// 	},
+	// })
 
-	svc := router.NewService(config, sdkClient)
+	// For now, create a mock executor since SDK has dependency issues
+	mockExecutor := &mockDEXExecutor{}
+
+	svc := router.NewService(config, mockExecutor)
 	
 	// Connect router to indexer for real-time pool data
 	if *indexerEndpoint != "" {

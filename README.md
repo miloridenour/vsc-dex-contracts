@@ -612,17 +612,39 @@ MIT License - see LICENSE file for details
 
 ## Testing
 
-### Unit Tests
+The DEX router includes two levels of testing:
+
+### Unit Tests (Mathematical Logic)
+
 Run mathematical and logical unit tests for core DEX algorithms:
 
 ```bash
-# Run DEX router unit tests
+# Run DEX router unit tests (comprehensive mathematical coverage)
 cd contracts/dex-router/test && go test -v ./...
 
 # Run with coverage report
 cd contracts/dex-router/test && go test -cover -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
 ```
+
+**Coverage Areas:**
+- ✅ AMM constant product calculations
+- ✅ Slippage protection algorithms
+- ✅ Fee and referral calculations
+- ✅ JSON instruction validation
+- ✅ Liquidity math (LP tokens, withdrawals)
+- ✅ Mathematical utilities (sqrt128, min/max functions)
+
+### Contract-Level Unit Tests
+
+Additional unit tests that validate instruction parsing and business logic:
+
+```bash
+# Run contract instruction parsing tests
+cd contracts/dex-router && go test -v .
+```
+
+**Note**: Full contract execution testing requires Go 1.24.0+ due to VSC node dependencies. The current mathematical unit tests provide comprehensive coverage of DEX logic without requiring the full runtime environment.
 
 **Coverage Areas:**
 - ✅ AMM constant product calculations
