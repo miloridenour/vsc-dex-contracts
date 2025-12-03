@@ -1,27 +1,27 @@
 package main
 
 import (
+	sdk "dex-router/sdk"
 	"encoding/json"
 	"math/bits"
 	"strconv"
-	sdk "dex-router/sdk"
 )
 
 func main() {}
 
 // DEX Instruction Schema
 type DexInstruction struct {
-	Type        string                 `json:"type"`
-	Version     string                 `json:"version"`
-	AssetIn     string                 `json:"asset_in"`
-	AssetOut    string                 `json:"asset_out"`
-	Recipient   string                 `json:"recipient"`
-	SlippageBps *int                   `json:"slippage_bps,omitempty"`
-	MinAmountOut *int64                `json:"min_amount_out,omitempty"`
-	Beneficiary *string                `json:"beneficiary,omitempty"`
-	RefBps      *int                   `json:"ref_bps,omitempty"`
-	ReturnAddress *ReturnAddress       `json:"return_address,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Type          string                 `json:"type"`
+	Version       string                 `json:"version"`
+	AssetIn       string                 `json:"asset_in"`
+	AssetOut      string                 `json:"asset_out"`
+	Recipient     string                 `json:"recipient"`
+	SlippageBps   *int                   `json:"slippage_bps,omitempty"`
+	MinAmountOut  *int64                 `json:"min_amount_out,omitempty"`
+	Beneficiary   *string                `json:"beneficiary,omitempty"`
+	RefBps        *int                   `json:"ref_bps,omitempty"`
+	ReturnAddress *ReturnAddress         `json:"return_address,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
 }
 
 type ReturnAddress struct {
@@ -108,8 +108,8 @@ func Execute(payload *string) *string {
 
 	// Validate required fields
 	if instruction.Type == "" || instruction.Version == "" ||
-	   instruction.AssetIn == "" || instruction.AssetOut == "" ||
-	   instruction.Recipient == "" {
+		instruction.AssetIn == "" || instruction.AssetOut == "" ||
+		instruction.Recipient == "" {
 		return &[]string{"error", "missing required fields"}[1]
 	}
 
@@ -206,7 +206,7 @@ func executeDirectSwap(poolId string, instruction DexInstruction) *string {
 
 		// Update reserves
 		setPoolReserve0(poolId, newR0)
-		setPoolReserve1(poolId, r1 - amountOut)
+		setPoolReserve1(poolId, r1-amountOut)
 
 	} else if asset1 == instruction.AssetIn && asset0 == instruction.AssetOut {
 		// asset1 -> asset0
@@ -222,7 +222,7 @@ func executeDirectSwap(poolId string, instruction DexInstruction) *string {
 
 		// Update reserves
 		setPoolReserve1(poolId, newR1)
-		setPoolReserve0(poolId, r0 - amountOut)
+		setPoolReserve0(poolId, r0-amountOut)
 
 	} else {
 		return &[]string{"error", "invalid asset pair for pool"}[1]
@@ -258,7 +258,7 @@ func executeDirectSwap(poolId string, instruction DexInstruction) *string {
 		fee := amountInU - (amountInU * (10000 - feeBps) / 10000)
 		if fee > 0 {
 			currentFee := getUint(feeReserveKey)
-			setUint(feeReserveKey, currentFee + fee)
+			setUint(feeReserveKey, currentFee+fee)
 		}
 	}
 
@@ -312,7 +312,7 @@ func executeTwoHopSwap(instruction DexInstruction) *string {
 
 		// Update first pool reserves
 		setPoolReserve0(pool1Id, newR0)
-		setPoolReserve1(pool1Id, r1_1 - amountIntermediate)
+		setPoolReserve1(pool1Id, r1_1-amountIntermediate)
 	} else {
 		// AssetIn is asset1, HBD is asset0
 		k1 := r1_0 * r1_1
@@ -325,7 +325,7 @@ func executeTwoHopSwap(instruction DexInstruction) *string {
 
 		// Update first pool reserves
 		setPoolReserve1(pool1Id, newR1)
-		setPoolReserve0(pool1Id, r1_0 - amountIntermediate)
+		setPoolReserve0(pool1Id, r1_0-amountIntermediate)
 	}
 
 	// Calculate second hop: HBD -> AssetOut
@@ -342,7 +342,7 @@ func executeTwoHopSwap(instruction DexInstruction) *string {
 
 		// Update second pool reserves
 		setPoolReserve0(pool2Id, newR0)
-		setPoolReserve1(pool2Id, r2_1 - amountOut)
+		setPoolReserve1(pool2Id, r2_1-amountOut)
 	} else {
 		// HBD is asset1, AssetOut is asset0
 		k2 := r2_0 * r2_1
@@ -355,7 +355,7 @@ func executeTwoHopSwap(instruction DexInstruction) *string {
 
 		// Update second pool reserves
 		setPoolReserve1(pool2Id, newR1)
-		setPoolReserve0(pool2Id, r2_0 - amountOut)
+		setPoolReserve0(pool2Id, r2_0-amountOut)
 	}
 
 	// Apply slippage protection
@@ -375,9 +375,9 @@ func executeTwoHopSwap(instruction DexInstruction) *string {
 		fee := amountIn - (amountIn * (10000 - fee1) / 10000)
 		if fee > 0 {
 			if asset1_0 == "HBD" {
-				setUint(poolFee0Key(pool1Id), getUint(poolFee0Key(pool1Id)) + fee)
+				setUint(poolFee0Key(pool1Id), getUint(poolFee0Key(pool1Id))+fee)
 			} else {
-				setUint(poolFee1Key(pool1Id), getUint(poolFee1Key(pool1Id)) + fee)
+				setUint(poolFee1Key(pool1Id), getUint(poolFee1Key(pool1Id))+fee)
 			}
 		}
 	}
@@ -480,16 +480,16 @@ func executeAddLiquidity(poolId string, amt0U, amt1U uint64, provider string) *s
 		m1 := amt1U * totalLP / r1
 		minted = min64(m0, m1)
 	}
-	assert(minted > 0)
+	assertCustom(minted > 0)
 
 	// Update state
-	setPoolReserve0(poolId, r0 + amt0U)
-	setPoolReserve1(poolId, r1 + amt1U)
-	setPoolTotalLp(poolId, totalLP + minted)
+	setPoolReserve0(poolId, r0+amt0U)
+	setPoolReserve1(poolId, r1+amt1U)
+	setPoolTotalLp(poolId, totalLP+minted)
 
 	// Mint LP tokens to provider
 	currentLP := getPoolLp(poolId, provider)
-	setPoolLp(poolId, provider, currentLP + minted)
+	setPoolLp(poolId, provider, currentLP+minted)
 
 	return nil
 }
@@ -500,7 +500,7 @@ func executeRemoveLiquidity(poolId string, lpAmountU uint64, provider string) *s
 	userLP := getPoolLp(poolId, providerAddr.String())
 	totalLP := getPoolTotalLp(poolId)
 
-	assert(lpAmountU > 0 && lpAmountU <= userLP && totalLP > 0)
+	assertCustom(lpAmountU > 0 && lpAmountU <= userLP && totalLP > 0)
 
 	r0 := getPoolReserve0(poolId)
 	r1 := getPoolReserve1(poolId)
@@ -510,10 +510,10 @@ func executeRemoveLiquidity(poolId string, lpAmountU uint64, provider string) *s
 	amt1 := int64(r1 * lpAmountU / totalLP)
 
 	// Update state first
-	setPoolLp(poolId, providerAddr.String(), userLP - lpAmountU)
-	setPoolTotalLp(poolId, totalLP - lpAmountU)
-	setPoolReserve0(poolId, r0 - uint64(amt0))
-	setPoolReserve1(poolId, r1 - uint64(amt1))
+	setPoolLp(poolId, providerAddr.String(), userLP-lpAmountU)
+	setPoolTotalLp(poolId, totalLP-lpAmountU)
+	setPoolReserve0(poolId, r0-uint64(amt0))
+	setPoolReserve1(poolId, r1-uint64(amt1))
 
 	// Transfer assets out
 	asset0 := getPoolAsset0(poolId)
